@@ -83,13 +83,13 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
         </CardHeader>
         <CardContent>
           {chartData.length === 0 ? (
-            <p className="text-sm text-white/30 py-8 text-center">No session data in the last 14 days.</p>
+            <p className="text-sm text-white/60 py-8 text-center">No session data in the last 14 days.</p>
           ) : (
             <div className="space-y-3">
               {chartData.map((d, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-white/30 uppercase tracking-wider text-[10px]">{d.date}</span>
+                    <span className="text-white/60 uppercase tracking-wider text-xs">{d.date}</span>
                     <span className="font-medium font-mono text-white/60">
                       {d.avgHr > 0 ? `${d.avgHr} bpm` : "No HR"}
                       {d.avgTrimp > 0 ? ` / TRIMP ${d.avgTrimp}` : ""}
@@ -122,7 +122,7 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
                   </div>
                 </div>
               ))}
-              <div className="flex gap-4 text-xs text-white/30 mt-2 pt-2 border-t border-white/[0.06]">
+              <div className="flex gap-4 text-xs text-white/60 mt-2 pt-2 border-t border-white/[0.06]">
                 <div className="flex items-center gap-1">
                   <div className="h-2 w-2 rounded-full bg-[#00d4ff] shadow-[0_0_4px_rgba(0,212,255,0.5)]" />
                   Avg HR
@@ -144,7 +144,7 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
         </CardHeader>
         <CardContent>
           {riskTotal === 0 ? (
-            <p className="text-sm text-white/30 py-8 text-center">No load data yet.</p>
+            <p className="text-sm text-white/60 py-8 text-center">No load data yet.</p>
           ) : (
             <div className="space-y-4">
               {/* Stacked bar */}
@@ -176,14 +176,14 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
                     />
                     <div>
                       <p className="text-sm font-medium font-mono text-white">{value} players</p>
-                      <p className="text-[10px] text-white/30 uppercase tracking-wider">{RISK_LABELS[key]}</p>
+                      <p className="text-xs text-white/60 uppercase tracking-wider">{RISK_LABELS[key]}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Summary */}
-              <p className="text-xs text-white/40 border-t border-white/[0.06] pt-3 italic">
+              <p className="text-xs text-white/60 border-t border-white/[0.06] pt-3 italic">
                 {riskDistribution.red > 0
                   ? `${riskDistribution.red} player${riskDistribution.red > 1 ? "s" : ""} in the danger zone — immediate load reduction recommended.`
                   : riskDistribution.amber > 0

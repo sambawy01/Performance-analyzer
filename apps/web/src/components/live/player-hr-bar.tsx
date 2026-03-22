@@ -68,7 +68,7 @@ export function PlayerHrBar({
       </div>
 
       {/* Zone scale */}
-      <div className="flex mt-1 text-[10px] text-muted-foreground">
+      <div className="flex mt-1 text-xs text-muted-foreground">
         <span className="flex-1">Z1</span>
         <span className="flex-1 text-center">Z2</span>
         <span className="flex-1 text-center">Z3</span>

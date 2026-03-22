@@ -54,7 +54,7 @@ interface TacticalHistory {
 
 // Assess metric with comparison to history
 function assessMetric(current: number, history: number[], label: string): { trend: string; color: string; icon: typeof TrendingUp; insight: string } {
-  if (history.length === 0) return { trend: "N/A", color: "text-white/40", icon: Minus, insight: `First recorded value for ${label}.` };
+  if (history.length === 0) return { trend: "N/A", color: "text-white/60", icon: Minus, insight: `First recorded value for ${label}.` };
   const avg = history.reduce((s, v) => s + v, 0) / history.length;
   const diff = ((current - avg) / avg) * 100;
   if (diff > 10) return { trend: `+${Math.round(diff)}%`, color: "text-[#00ff88]", icon: TrendingUp, insight: `${label} is ${Math.round(diff)}% above the team's recent average (${avg.toFixed(1)}).` };
@@ -112,8 +112,8 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
         <CardContent>
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <Crosshair className="h-10 w-10 text-white/10 mb-4" />
-            <p className="text-white/40 mb-2">No tactical data for this session.</p>
-            <p className="text-sm text-white/20">
+            <p className="text-white/60 mb-2">No tactical data for this session.</p>
+            <p className="text-sm text-white/60">
               Process a video through the CV pipeline to generate formation maps, pressing analysis, and transition metrics.
             </p>
           </div>
@@ -157,7 +157,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                     </Badge>
                   ))}
                 </div>
-                <p className="text-[11px] text-white/30 italic mt-1">
+                <p className="text-xs text-white/60 italic mt-1">
                   {tactical.formation_snapshots.length - 1} formation change{tactical.formation_snapshots.length > 2 ? "s" : ""} during the session — {tactical.formation_snapshots.length > 3 ? "frequent adjustments suggest reactive coaching or unsettled shape" : "normal in-session adaptation"}
                 </p>
               </div>
@@ -192,13 +192,13 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                       style={{ width: `${tactical.possession_pct}%`, boxShadow: "0 0 10px rgba(0,212,255,0.3)" }}
                     />
                   </div>
-                  <div className="flex justify-between text-[10px] text-white/30 mt-1">
+                  <div className="flex justify-between text-xs text-white/60 mt-1">
                     <span>Our team</span>
                     <span>Opposition</span>
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-white/50 leading-relaxed italic">
+              <p className="text-xs text-white/70 leading-relaxed italic">
                 {getPossessionAnalysis(tactical.possession_pct, "training")}
               </p>
             </CardContent>
@@ -230,9 +230,9 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                 {pressingInfo.label}
               </Badge>
             </div>
-            <p className="text-xs text-white/50 leading-relaxed italic mb-3">{pressingInfo.analysis}</p>
+            <p className="text-xs text-white/70 leading-relaxed italic mb-3">{pressingInfo.analysis}</p>
             {pressingTrend && (
-              <p className="text-[11px] text-white/30">{pressingTrend.insight}</p>
+              <p className="text-xs text-white/60">{pressingTrend.insight}</p>
             )}
           </CardContent>
         </Card>
@@ -261,24 +261,24 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                 <div>
                   <p className="data-label mb-1"><MetricInfo term="compactness">Compactness</MetricInfo></p>
                   <p className="text-xl font-mono font-bold text-white">{tactical.compactness_avg.toFixed(1)}m</p>
-                  <p className="text-[10px] text-white/30">±{tactical.compactness_std.toFixed(1)}m</p>
+                  <p className="text-xs text-white/60">±{tactical.compactness_std.toFixed(1)}m</p>
                 </div>
                 {tactical.defensive_line_height_avg !== null && (
                   <div>
                     <p className="data-label mb-1"><MetricInfo term="def-line">Def. Line</MetricInfo></p>
                     <p className="text-xl font-mono font-bold text-white">{tactical.defensive_line_height_avg.toFixed(0)}m</p>
-                    <p className="text-[10px] text-white/30">from own goal</p>
+                    <p className="text-xs text-white/60">from own goal</p>
                   </div>
                 )}
                 {tactical.team_width_avg !== null && tactical.team_length_avg !== null && (
                   <div>
                     <p className="data-label mb-1"><MetricInfo term="team-shape">Team Shape</MetricInfo></p>
                     <p className="text-xl font-mono font-bold text-white">{tactical.team_width_avg.toFixed(0)}×{tactical.team_length_avg.toFixed(0)}</p>
-                    <p className="text-[10px] text-white/30">W × L meters</p>
+                    <p className="text-xs text-white/60">W × L meters</p>
                   </div>
                 )}
               </div>
-              <p className="text-xs text-white/50 leading-relaxed italic">
+              <p className="text-xs text-white/70 leading-relaxed italic">
                 {getCompactnessAnalysis(tactical.compactness_avg, tactical.compactness_std)}
               </p>
             </CardContent>
@@ -315,7 +315,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-white/50 leading-relaxed italic">
+              <p className="text-xs text-white/70 leading-relaxed italic">
                 {getTransitionAnalysis(tactical.transition_speed_atk_s, tactical.transition_speed_def_s)}
               </p>
             </CardContent>
@@ -399,11 +399,11 @@ Reference specific numbers and compare to previous sessions.`
               })}
               <div className="flex items-center gap-1.5 pt-3 border-t border-white/[0.06] mt-3">
                 <Brain className="h-3 w-3 text-[#a855f7]/40" />
-                <span className="text-[10px] text-white/20 italic">Coach M8 AI — tactical analysis based on session data + historical comparison</span>
+                <span className="text-xs text-white/60 italic">Coach M8 AI — tactical analysis based on session data + historical comparison</span>
               </div>
             </div>
           ) : !aiLoading ? (
-            <p className="text-sm text-white/30 italic py-4 text-center">
+            <p className="text-sm text-white/60 italic py-4 text-center">
               Click &quot;Deep Analysis&quot; for AI-powered tactical intelligence comparing this session to your team&apos;s patterns.
             </p>
           ) : (

@@ -154,27 +154,27 @@ function AlertCard({ alert }: { alert: Alert }) {
                 <span className="font-mono">ACWR {alert.acwr_ratio}</span>
               </Badge>
               {expanded ? (
-                <ChevronUp className="h-4 w-4 text-white/30" />
+                <ChevronUp className="h-4 w-4 text-white/60" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-white/30" />
+                <ChevronDown className="h-4 w-4 text-white/60" />
               )}
             </div>
           </div>
-          <div className="flex gap-2 text-xs text-white/30 mb-1.5 uppercase tracking-wider">
+          <div className="flex gap-2 text-xs text-white/60 mb-1.5 uppercase tracking-wider">
             <span>{alert.players.position}</span>
             <span>{ageGroupLabel(alert.players.age_group)}</span>
           </div>
-          <p className="text-xs text-white/50 leading-relaxed">
+          <p className="text-xs text-white/70 leading-relaxed">
             {getAlertMessage(alert)}
           </p>
           <div className="flex gap-4 mt-2 text-xs">
-            <span className="text-white/30">
+            <span className="text-white/60">
               7d load:{" "}
               <span className="font-medium font-mono text-white">
                 {Math.round(alert.acute_load_7d)}
               </span>
             </span>
-            <span className="text-white/30">
+            <span className="text-white/60">
               28d avg:{" "}
               <span className="font-medium font-mono text-white">
                 {Math.round(alert.chronic_load_28d)}
@@ -188,11 +188,11 @@ function AlertCard({ alert }: { alert: Alert }) {
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
                   <Search className="h-3.5 w-3.5 text-[#00d4ff]" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#00d4ff]">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-[#00d4ff]">
                     Why this is happening
                   </span>
                 </div>
-                <p className="text-xs text-white/50 leading-relaxed italic">
+                <p className="text-xs text-white/70 leading-relaxed italic">
                   {getAiReason(alert)}
                 </p>
               </div>
@@ -201,7 +201,7 @@ function AlertCard({ alert }: { alert: Alert }) {
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
                   <Lightbulb className="h-3.5 w-3.5 text-[#ff6b35]" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#ff6b35]">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-[#ff6b35]">
                     What to do now
                   </span>
                 </div>
@@ -209,9 +209,9 @@ function AlertCard({ alert }: { alert: Alert }) {
                   {getAiSuggestion(alert).map((s, i) => (
                     <li
                       key={i}
-                      className="text-xs text-white/50 flex items-start gap-2"
+                      className="text-xs text-white/70 flex items-start gap-2"
                     >
-                      <span className="text-[#ff6b35] mt-0.5 shrink-0 font-mono text-[10px]">
+                      <span className="text-[#ff6b35] mt-0.5 shrink-0 font-mono text-xs">
                         {i + 1}.
                       </span>
                       {s}
@@ -224,7 +224,7 @@ function AlertCard({ alert }: { alert: Alert }) {
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
                   <Shield className="h-3.5 w-3.5 text-[#00ff88]" />
-                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#00ff88]">
+                  <span className="text-xs font-semibold uppercase tracking-widest text-[#00ff88]">
                     Prevention measures
                   </span>
                 </div>
@@ -232,9 +232,9 @@ function AlertCard({ alert }: { alert: Alert }) {
                   {getAiPrevention(alert).map((p, i) => (
                     <li
                       key={i}
-                      className="text-xs text-white/50 flex items-start gap-2"
+                      className="text-xs text-white/70 flex items-start gap-2"
                     >
-                      <span className="text-[#00ff88] mt-0.5 shrink-0 font-mono text-[10px]">
+                      <span className="text-[#00ff88] mt-0.5 shrink-0 font-mono text-xs">
                         {i + 1}.
                       </span>
                       {p}
@@ -246,7 +246,7 @@ function AlertCard({ alert }: { alert: Alert }) {
               {/* AI badge */}
               <div className="flex items-center gap-1.5 pt-2 border-t border-white/[0.06]">
                 <Brain className="h-3 w-3 text-[#a855f7]" />
-                <span className="text-[10px] text-[#a855f7] font-medium italic">
+                <span className="text-xs text-[#a855f7] font-medium italic">
                   AI-generated analysis based on ACWR data, position, and age
                   group
                 </span>
@@ -275,7 +275,7 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
               <Activity className="h-6 w-6 text-[#00ff88]" />
             </div>
             <p className="text-sm font-medium text-[#00ff88]">All clear</p>
-            <p className="text-xs text-white/30 mt-1">
+            <p className="text-xs text-white/60 mt-1">
               No players in the amber or red ACWR zone.
             </p>
           </div>

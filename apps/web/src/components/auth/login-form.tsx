@@ -42,14 +42,14 @@ export function LoginForm() {
         <CardTitle className="text-2xl text-gradient tracking-tight">
           Coach M8
         </CardTitle>
-        <p className="text-[10px] text-white/40 uppercase tracking-widest">
+        <p className="text-xs text-white/60 uppercase tracking-widest">
           AI Performance Analyst
         </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email" className="text-[10px] uppercase tracking-widest text-white/40">
+            <Label htmlFor="email" className="text-xs uppercase tracking-widest text-white/60">
               Email
             </Label>
             <Input
@@ -58,11 +58,11 @@ export function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus-visible:border-[#00d4ff]/50 focus-visible:ring-[#00d4ff]/20 focus-visible:shadow-[0_0_15px_rgba(0,212,255,0.15)]"
+              className="bg-white/[0.04] border-white/10 text-white placeholder:text-white/60 focus-visible:border-[#00d4ff]/50 focus-visible:ring-[#00d4ff]/20 focus-visible:shadow-[0_0_15px_rgba(0,212,255,0.15)]"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password" className="text-[10px] uppercase tracking-widest text-white/40">
+            <Label htmlFor="password" className="text-xs uppercase tracking-widest text-white/60">
               Password
             </Label>
             <Input
@@ -71,7 +71,7 @@ export function LoginForm() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus-visible:border-[#00d4ff]/50 focus-visible:ring-[#00d4ff]/20 focus-visible:shadow-[0_0_15px_rgba(0,212,255,0.15)]"
+              className="bg-white/[0.04] border-white/10 text-white placeholder:text-white/60 focus-visible:border-[#00d4ff]/50 focus-visible:ring-[#00d4ff]/20 focus-visible:shadow-[0_0_15px_rgba(0,212,255,0.15)]"
             />
           </div>
           {error && (

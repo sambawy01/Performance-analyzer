@@ -100,12 +100,12 @@ export function StatCards({
               <p className="text-2xl font-bold tracking-tight font-mono stat-number text-white">
                 {value}
                 {suffix && (
-                  <span className="text-xs font-normal text-white/30 ml-1 font-sans">
+                  <span className="text-xs font-normal text-white/60 ml-1 font-sans">
                     {suffix}
                   </span>
                 )}
               </p>
-              <p className="text-[10px] text-white/40 mt-0.5 uppercase tracking-wider">
+              <p className="text-xs text-white/60 mt-0.5 uppercase tracking-wider">
                 {stat.label}
               </p>
             </div>

@@ -41,29 +41,29 @@ function CustomTooltip({ active, payload, label }: any) {
         <>
           <div className="space-y-1">
             <div className="flex justify-between gap-6">
-              <span className="text-white/40 uppercase text-[10px] tracking-wider">HR Range</span>
+              <span className="text-white/60 uppercase text-xs tracking-wider">HR Range</span>
               <span className="font-mono font-medium text-white">{d.hrLow} - {d.hrHigh} bpm</span>
             </div>
             <div className="flex justify-between gap-6">
-              <span className="text-white/40 uppercase text-[10px] tracking-wider">Avg HR</span>
+              <span className="text-white/60 uppercase text-xs tracking-wider">Avg HR</span>
               <span className="font-mono font-semibold text-[#00d4ff]">{d.avgHr} bpm</span>
             </div>
             <div className="flex justify-between gap-6">
-              <span className="text-white/40 uppercase text-[10px] tracking-wider">TRIMP Range</span>
+              <span className="text-white/60 uppercase text-xs tracking-wider">TRIMP Range</span>
               <span className="font-mono font-medium text-white">{d.trimpLow} - {d.trimpHigh}</span>
             </div>
             <div className="flex justify-between gap-6">
-              <span className="text-white/40 uppercase text-[10px] tracking-wider">Avg TRIMP</span>
+              <span className="text-white/60 uppercase text-xs tracking-wider">Avg TRIMP</span>
               <span className="font-mono font-semibold text-[#ff6b35]">{d.avgTrimp}</span>
             </div>
             <div className="flex justify-between gap-6">
-              <span className="text-white/40 uppercase text-[10px] tracking-wider">Players</span>
+              <span className="text-white/60 uppercase text-xs tracking-wider">Players</span>
               <span className="font-mono font-medium text-white">{d.players}</span>
             </div>
           </div>
         </>
       ) : (
-        <p className="text-white/40">No wearable data</p>
+        <p className="text-white/60">No wearable data</p>
       )}
     </div>
   );
@@ -72,7 +72,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function IntensityChart({ data }: IntensityChartProps) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[260px] text-sm text-white/30">
+      <div className="flex items-center justify-center h-[260px] text-sm text-white/60">
         No session data in the last 14 days.
       </div>
     );

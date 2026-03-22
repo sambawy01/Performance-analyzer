@@ -50,7 +50,7 @@ export function Sidebar({ role }: { role: string }) {
         <h1 className="text-lg font-bold text-gradient tracking-tight">
           Coach M8
         </h1>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
+        <p className="text-xs text-muted-foreground uppercase tracking-widest mt-0.5">
           AI Performance Analyst
         </p>
       </div>

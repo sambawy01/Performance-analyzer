@@ -69,7 +69,7 @@ export function LatestSessionCard({ session }: LatestSessionCardProps) {
           )}
         </div>
         {session.notes && (
-          <p className="text-sm text-white/40 mt-2 line-clamp-2 italic">
+          <p className="text-sm text-white/60 mt-2 line-clamp-2 italic">
             {session.notes}
           </p>
         )}

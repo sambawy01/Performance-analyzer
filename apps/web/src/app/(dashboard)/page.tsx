@@ -221,9 +221,9 @@ export default async function DashboardPage() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-sm font-semibold">Session Intensity</h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">HR range per session (candlestick) + TRIMP trend</p>
+              <p className="text-xs text-muted-foreground mt-0.5">HR range per session (candlestick) + TRIMP trend</p>
             </div>
-            <div className="flex gap-3 text-[11px] text-muted-foreground">
+            <div className="flex gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1">
                 <span className="h-2 w-2 rounded bg-green-500 inline-block" />
                 Low

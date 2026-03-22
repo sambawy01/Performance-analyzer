@@ -111,7 +111,7 @@ export function LiveVideoPlayer({
                 Open in Veo
                 <Maximize2 className="h-3 w-3" />
               </a>
-              <p className="text-xs text-white/40 mt-3 max-w-xs mx-auto">
+              <p className="text-xs text-white/60 mt-3 max-w-xs mx-auto">
                 To embed the stream directly, configure Veo&apos;s Custom RTMP
                 Destination to push to your relay server, then enter the HLS URL
                 below.
@@ -170,7 +170,7 @@ export function LiveVideoPlayer({
             <div className="text-center text-white/60">
               <VideoOff className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="text-sm mb-1">No video stream configured</p>
-              <p className="text-xs text-white/40 max-w-xs mx-auto">
+              <p className="text-xs text-white/60 max-w-xs mx-auto">
                 Set up Veo → Custom RTMP → your relay server, then enter the HLS
                 URL to embed live video here.
               </p>
@@ -183,7 +183,7 @@ export function LiveVideoPlayer({
                     value={customUrl}
                     onChange={(e) => setCustomUrl(e.target.value)}
                   />
-                  <p className="text-[10px] text-white/30">
+                  <p className="text-xs text-white/60">
                     Enter an HLS (.m3u8) URL from your RTMP relay
                   </p>
                 </div>

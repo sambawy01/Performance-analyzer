@@ -156,26 +156,26 @@ function InfoModal({ info, onClose }: { info: typeof METRIC_EXPLANATIONS[string]
             <HelpCircle className="h-5 w-5 text-[#00d4ff]" />
             <h3 className="font-semibold text-white text-base">{info.title}</h3>
           </div>
-          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
+          <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-4">
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-[#00d4ff] mb-1.5 font-semibold">What is it?</p>
+            <p className="text-xs uppercase tracking-widest text-[#00d4ff] mb-1.5 font-semibold">What is it?</p>
             <p className="text-sm text-white/70 leading-relaxed">{info.what}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-[#a855f7] mb-1.5 font-semibold">Why does it matter?</p>
+            <p className="text-xs uppercase tracking-widest text-[#a855f7] mb-1.5 font-semibold">Why does it matter?</p>
             <p className="text-sm text-white/70 leading-relaxed">{info.why}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-[#00ff88] mb-1.5 font-semibold">What&apos;s good?</p>
+            <p className="text-xs uppercase tracking-widest text-[#00ff88] mb-1.5 font-semibold">What&apos;s good?</p>
             <p className="text-sm text-white/70 leading-relaxed">{info.good}</p>
           </div>
           <div>
-            <p className="text-[10px] uppercase tracking-widest text-[#ff3355] mb-1.5 font-semibold">Warning signs</p>
+            <p className="text-xs uppercase tracking-widest text-[#ff3355] mb-1.5 font-semibold">Warning signs</p>
             <p className="text-sm text-white/70 leading-relaxed">{info.bad}</p>
           </div>
         </div>

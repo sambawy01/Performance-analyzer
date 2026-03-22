@@ -19,9 +19,9 @@ export function Header({ user }: { user: User }) {
     <header className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-xl px-6 py-3">
       <div />
       <div className="flex items-center gap-4">
-        <span className="text-sm text-white/40">
+        <span className="text-sm text-white/60">
           {user.name}{" "}
-          <span className="text-[10px] uppercase tracking-wider text-[#00d4ff]/60 ml-1">
+          <span className="text-xs uppercase tracking-wider text-[#00d4ff]/60 ml-1">
             {user.role}
           </span>
         </span>

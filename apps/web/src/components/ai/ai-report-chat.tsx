@@ -202,7 +202,7 @@ export function AiReportChat({
               <AlertCircle className="h-4 w-4 mt-0.5 shrink-0 text-[#ff3355]" />
               <div>
                 <p className="font-medium text-[#ff3355]">Failed to generate</p>
-                <p className="text-xs mt-0.5 text-white/40">{error}</p>
+                <p className="text-xs mt-0.5 text-white/60">{error}</p>
               </div>
             </div>
           )}
@@ -212,7 +212,7 @@ export function AiReportChat({
               <div className="rounded-full bg-[#a855f7]/10 p-4 mb-4 shadow-[0_0_30px_rgba(168,85,247,0.15)]">
                 <Brain className="h-8 w-8 text-[#a855f7]" />
               </div>
-              <p className="text-sm text-white/40 max-w-md">{placeholder}</p>
+              <p className="text-sm text-white/60 max-w-md">{placeholder}</p>
             </div>
           )}
 
@@ -243,7 +243,7 @@ export function AiReportChat({
             <CardTitle className="flex items-center gap-2 text-sm">
               <MessageSquare className="h-4 w-4 text-[#00d4ff]" />
               <span>Discuss with AI Analyst</span>
-              <span className="text-[10px] text-white/20 uppercase tracking-widest ml-2">
+              <span className="text-xs text-white/60 uppercase tracking-widest ml-2">
                 Ask follow-up questions
               </span>
             </CardTitle>
@@ -327,7 +327,7 @@ export function AiReportChat({
                         sendMessage();
                       }, 100);
                     }}
-                    className="text-[11px] px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/40 hover:text-[#00d4ff] hover:border-[#00d4ff]/30 hover:bg-[#00d4ff]/5 transition-all duration-200"
+                    className="text-xs px-2.5 py-1 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/60 hover:text-[#00d4ff] hover:border-[#00d4ff]/30 hover:bg-[#00d4ff]/5 transition-all duration-200"
                   >
                     {q}
                   </button>
@@ -343,7 +343,7 @@ export function AiReportChat({
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && sendMessage()}
                 placeholder="Ask about the data... (e.g. 'Should Ahmed play the full match Saturday?')"
-                className="flex-1 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/20 focus:border-[#00d4ff]/50 focus:ring-[#00d4ff]/20"
+                className="flex-1 bg-white/[0.03] border-white/[0.08] text-white placeholder:text-white/60 focus:border-[#00d4ff]/50 focus:ring-[#00d4ff]/20"
                 disabled={chatLoading}
               />
               <button
@@ -357,7 +357,7 @@ export function AiReportChat({
 
             <div className="flex items-center gap-1.5 mt-2">
               <Brain className="h-3 w-3 text-[#a855f7]/40" />
-              <span className="text-[10px] text-white/20">
+              <span className="text-xs text-white/60">
                 Coach M8 AI — powered by your academy&apos;s live performance data
               </span>
             </div>

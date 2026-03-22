@@ -26,7 +26,7 @@ export default function RiskDonut({ distribution }: RiskDonutProps) {
 
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center h-[260px] text-sm text-white/30">
+      <div className="flex items-center justify-center h-[260px] text-sm text-white/60">
         No load data yet.
       </div>
     );
@@ -76,7 +76,7 @@ export default function RiskDonut({ distribution }: RiskDonutProps) {
         {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-2xl font-bold font-mono text-white stat-number">{total}</span>
-          <span className="text-[10px] text-white/30 uppercase tracking-widest">
+          <span className="text-xs text-white/60 uppercase tracking-widest">
             Players
           </span>
         </div>
@@ -92,7 +92,7 @@ export default function RiskDonut({ distribution }: RiskDonutProps) {
                 boxShadow: `0 0 6px ${entry.color}40`,
               }}
             />
-            <span className="text-xs text-white/40">
+            <span className="text-xs text-white/60">
               {entry.name}{" "}
               <span className="font-medium font-mono text-white">{entry.value}</span>
             </span>

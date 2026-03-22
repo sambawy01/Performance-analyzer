@@ -122,7 +122,7 @@ export function AiSummaryBlock({
             })}
             <div className="flex items-center gap-1.5 pt-3 border-t mt-3">
               <Brain className="h-3 w-3 text-violet-400" />
-              <span className="text-[10px] text-violet-400 font-medium">
+              <span className="text-xs text-violet-400 font-medium">
                 Coach M8 AI — analysis based on wearable HR and load data
               </span>
             </div>

@@ -39,19 +39,19 @@ export function RecentSessionsTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent border-white/[0.06]">
-              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
+              <TableHead className="text-xs font-medium text-white/60 uppercase tracking-wider">
                 Date
               </TableHead>
-              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
+              <TableHead className="text-xs font-medium text-white/60 uppercase tracking-wider">
                 Type
               </TableHead>
-              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
+              <TableHead className="text-xs font-medium text-white/60 uppercase tracking-wider">
                 Age Group
               </TableHead>
-              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
+              <TableHead className="text-xs font-medium text-white/60 uppercase tracking-wider">
                 Location
               </TableHead>
-              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
+              <TableHead className="text-xs font-medium text-white/60 uppercase tracking-wider">
                 Duration
               </TableHead>
             </TableRow>
@@ -61,7 +61,7 @@ export function RecentSessionsTable({
               <TableRow>
                 <TableCell
                   colSpan={5}
-                  className="text-center text-sm text-white/30 py-8"
+                  className="text-center text-sm text-white/60 py-8"
                 >
                   No sessions yet.
                 </TableCell>
@@ -89,7 +89,7 @@ export function RecentSessionsTable({
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className={`text-[11px] font-medium ${typeBg}`}
+                      className={`text-xs font-medium ${typeBg}`}
                     >
                       {sessionTypeLabel(s.type)}
                     </Badge>
@@ -97,15 +97,15 @@ export function RecentSessionsTable({
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className="text-[11px] font-medium border-white/10 text-white/60"
+                      className="text-xs font-medium border-white/10 text-white/60"
                     >
                       {ageGroupLabel(s.age_group)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-white/40">
+                  <TableCell className="text-sm text-white/60">
                     {s.location}
                   </TableCell>
-                  <TableCell className="text-sm text-white/40 font-mono">
+                  <TableCell className="text-sm text-white/60 font-mono">
                     {s.duration_minutes ? `${s.duration_minutes} min` : "--"}
                   </TableCell>
                 </TableRow>
