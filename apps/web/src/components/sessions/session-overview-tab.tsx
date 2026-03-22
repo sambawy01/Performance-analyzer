@@ -425,19 +425,17 @@ export function SessionOverviewTab({
                   {[...redFlags, ...amberFlags].slice(0, 5).map((r) => (
                     <div
                       key={r.player_id}
-                      className={`flex items-center justify-between p-2 rounded text-sm ${r.risk_flag === "red" ? "bg-red-50" : "bg-amber-50"}`}
+                      className={`flex items-center justify-between p-2 rounded-lg text-sm border ${r.risk_flag === "red" ? "bg-[#ff3355]/10 border-[#ff3355]/20" : "bg-[#ff6b35]/10 border-[#ff6b35]/20"}`}
                     >
                       <span className="font-medium">
                         #{r.players.jersey_number} {r.players.name}
                       </span>
                       <Badge
-                        variant={
-                          r.risk_flag === "red" ? "destructive" : "default"
-                        }
+                        variant="outline"
                         className={
-                          r.risk_flag === "amber"
-                            ? "bg-amber-500 hover:bg-amber-600"
-                            : ""
+                          r.risk_flag === "red"
+                            ? "bg-[#ff3355]/15 text-[#ff3355] border-[#ff3355]/30 font-mono"
+                            : "bg-[#ff6b35]/15 text-[#ff6b35] border-[#ff6b35]/30 font-mono"
                         }
                       >
                         ACWR {r.acwr_ratio}

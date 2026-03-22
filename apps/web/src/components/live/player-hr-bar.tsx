@@ -29,7 +29,7 @@ export function PlayerHrBar({
   return (
     <div
       className={`rounded-lg border p-3 transition-colors ${
-        isHighAlert ? "border-red-500 bg-red-50 dark:bg-red-950/30" : ""
+        isHighAlert ? "border-[#ff3355]/40 bg-[#ff3355]/10 shadow-[0_0_15px_rgba(255,51,85,0.15)]" : "border-white/[0.08] bg-white/[0.04]"
       }`}
     >
       <div className="flex items-center justify-between mb-2">

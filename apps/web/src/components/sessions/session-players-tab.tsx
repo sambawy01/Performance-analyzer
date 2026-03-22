@@ -108,19 +108,11 @@ export function SessionPlayersTab({
               {/* HR Zone bars */}
               <div className="mt-3 space-y-1">
                 {[
-                  { label: "Z1", pct: m.hr_zone_1_pct, color: "bg-blue-500" },
-                  { label: "Z2", pct: m.hr_zone_2_pct, color: "bg-green-500" },
-                  {
-                    label: "Z3",
-                    pct: m.hr_zone_3_pct,
-                    color: "bg-yellow-500",
-                  },
-                  {
-                    label: "Z4",
-                    pct: m.hr_zone_4_pct,
-                    color: "bg-orange-500",
-                  },
-                  { label: "Z5", pct: m.hr_zone_5_pct, color: "bg-red-500" },
+                  { label: "Z1", pct: m.hr_zone_1_pct, color: "bg-[#3b82f6]" },
+                  { label: "Z2", pct: m.hr_zone_2_pct, color: "bg-[#00ff88]" },
+                  { label: "Z3", pct: m.hr_zone_3_pct, color: "bg-[#eab308]" },
+                  { label: "Z4", pct: m.hr_zone_4_pct, color: "bg-[#ff6b35]" },
+                  { label: "Z5", pct: m.hr_zone_5_pct, color: "bg-[#ff3355]" },
                 ].map((z) => (
                   <div
                     key={z.label}

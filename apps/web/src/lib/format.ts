@@ -27,15 +27,15 @@ export function formatPercent(value: number): string {
 export function riskFlagColor(flag: string): string {
   switch (flag) {
     case "red":
-      return "text-red-600 bg-red-50 border-red-200";
+      return "text-[#ff3355] bg-[#ff3355]/10 border-[#ff3355]/20";
     case "amber":
-      return "text-amber-600 bg-amber-50 border-amber-200";
+      return "text-[#ff6b35] bg-[#ff6b35]/10 border-[#ff6b35]/20";
     case "green":
-      return "text-green-600 bg-green-50 border-green-200";
+      return "text-[#00ff88] bg-[#00ff88]/10 border-[#00ff88]/20";
     case "blue":
-      return "text-blue-600 bg-blue-50 border-blue-200";
+      return "text-[#00d4ff] bg-[#00d4ff]/10 border-[#00d4ff]/20";
     default:
-      return "text-muted-foreground bg-muted";
+      return "text-white/40 bg-white/5 border-white/10";
   }
 }
 

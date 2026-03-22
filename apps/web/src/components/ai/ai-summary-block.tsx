@@ -82,7 +82,7 @@ export function AiSummaryBlock({
       </CardHeader>
       <CardContent>
         {error && (
-          <div className="flex items-start gap-2 p-3 rounded-md bg-red-50 text-red-700 text-sm mb-3">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-[#ff3355]/10 border border-[#ff3355]/20 text-sm mb-3">
             <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
             <div>
               <p className="font-medium">Failed to generate</p>
