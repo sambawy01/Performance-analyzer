@@ -1,14 +1,21 @@
 "use client";
 
-import { AiSummaryBlock } from "@/components/ai/ai-summary-block";
+import { AiReportChat } from "@/components/ai/ai-report-chat";
 
-export function SessionAiReportTab({ sessionId }: { sessionId: string }) {
+interface SessionAiReportTabProps {
+  sessionId: string;
+  sessionContext: string;
+}
+
+export function SessionAiReportTab({ sessionId, sessionContext }: SessionAiReportTabProps) {
   return (
-    <AiSummaryBlock
-      title="AI Session Report"
-      apiEndpoint="/api/ai/session-summary"
-      requestBody={{ sessionId }}
-      placeholder="Click 'Generate Analysis' to create an AI-powered session report analyzing team intensity, individual performance, load alerts, and coaching recommendations."
+    <AiReportChat
+      title="AI Session Analysis"
+      reportEndpoint="/api/ai/session-summary"
+      chatEndpoint="/api/ai/chat"
+      reportBody={{ sessionId }}
+      context={sessionContext}
+      placeholder="Generate a comprehensive AI session report analyzing team intensity, individual performance, load impact, tactical observations, and next-session recommendations."
     />
   );
 }

@@ -11,7 +11,7 @@ import { PlayerOverview } from "@/components/players/player-overview";
 import { PlayerPhysicalTrends } from "@/components/players/player-physical-trends";
 import { PlayerSessionHistory } from "@/components/players/player-session-history";
 import { PlayerLoadChart } from "@/components/players/player-load-chart";
-import { AiSummaryBlock } from "@/components/ai/ai-summary-block";
+import { AiReportChat } from "@/components/ai/ai-report-chat";
 
 interface PlayerProfilePageProps {
   params: Promise<{ id: string }>;
@@ -56,12 +56,14 @@ export default async function PlayerProfilePage({
         sessionCount={recentSessionCount}
       />
 
-      {/* AI Development Summary */}
-      <AiSummaryBlock
-        title="AI Development Summary"
-        apiEndpoint="/api/ai/player-summary"
-        requestBody={{ playerId: id }}
-        placeholder="Click 'Generate Analysis' to get an AI-powered development summary analyzing this player's physical form, load management, strengths, and coaching recommendations based on their recent data."
+      {/* AI Development Report + Chat */}
+      <AiReportChat
+        title="AI Development Report"
+        reportEndpoint="/api/ai/player-summary"
+        chatEndpoint="/api/ai/chat"
+        reportBody={{ playerId: id }}
+        context={`Player: ${player.name}, ${player.position}, Age Group ${player.age_group}, Jersey #${player.jersey_number}. ${recentSessionCount} sessions in last 28 days. Latest ACWR: ${latestLoad?.acwr_ratio ?? 'N/A'} (${latestLoad?.risk_flag ?? 'N/A'}).`}
+        placeholder="Generate a comprehensive AI development report covering physical profile, load management, strengths, development areas, coaching recommendations, and a weekly load prescription."
       />
 
       <Tabs defaultValue="physical">

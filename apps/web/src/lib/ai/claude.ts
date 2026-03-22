@@ -56,17 +56,31 @@ ${sessionsData.map(s => `- ${s.date} | HR avg: ${s.hr_avg} bpm, max: ${s.hr_max}
 LOAD HISTORY (${loadHistory.length} records):
 ${loadHistory.map(l => `- ${l.date} | Load: ${Math.round(l.daily_load)} | ACWR: ${l.acwr_ratio} (${l.risk_flag})`).join('\n')}
 
-Write a 3-4 paragraph development summary covering:
-1. Current physical form — HR trends, fitness indicators, intensity patterns
-2. Load management — ACWR status, injury risk assessment, workload trajectory
-3. Key strengths and areas to develop based on the data
-4. Specific coaching recommendations for the next 1-2 weeks
+Write a comprehensive player development report with these sections (use ## headers):
 
-Be specific to this player. Reference actual numbers. Keep it under 200 words.`;
+## Physical Profile
+Analyze HR trends across sessions — is fitness improving (lower resting HR, faster recovery)? How does this player's intensity compare across session types? Identify patterns.
+
+## Load Management Assessment
+Current ACWR status and trajectory. Is the load sustainable? When was the last spike? Project where they'll be in 7 days if current pattern continues. Flag any injury risk with specific numbers.
+
+## Strengths (Data-Backed)
+What does the data tell us this player does well? High work rate? Good recovery? Consistent performer? Cite specific sessions and metrics.
+
+## Development Areas
+Where are the gaps? Poor recovery? Inconsistent intensity? Over/under-training patterns? Be specific.
+
+## Coaching Recommendations
+5 specific, actionable recommendations for the next 2 weeks. Each should reference a data point. Format as numbered list.
+
+## Weekly Load Prescription
+Suggest an ideal training week template for this player based on their current load state (which days high/medium/low/rest).
+
+Be specific to this player. Reference actual numbers. Write like a performance analyst briefing a head coach.`;
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",
-    max_tokens: 500,
+    max_tokens: 1200,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: prompt }],
   });
@@ -129,7 +143,27 @@ ${[...playerMetrics].sort((a, b) => b.trimp_score - a.trimp_score).slice(0, 3).m
 
 ${loadAlerts.length > 0 ? `INJURY RISK ALERTS:\n${loadAlerts.map(a => `- ${a.name}: ACWR ${a.acwr_ratio} (${a.risk_flag})`).join('\n')}` : 'No injury risk alerts.'}
 
-Write a 2-3 sentence session summary for the coach, then 2-3 bullet points of key observations and recommendations. Under 150 words total.`;
+Write a detailed session analysis report with these sections (use ## headers):
+
+## Session Summary
+2-3 sentences capturing the overall session — intensity level, purpose achieved or not, standout observations.
+
+## Intensity Analysis
+Break down the team's HR zone distribution. Was this session appropriately intense for its purpose (e.g., recovery session should be mostly Z1-Z2, match prep should hit Z4-Z5)? Compare to expected intensity for this session type.
+
+## Player Standouts
+Top 3 performers and why. Also flag the bottom 2 performers — were they underperforming or appropriately managed?
+
+## Load Impact
+How does this session affect the team's weekly load? Are any players now in the danger zone that weren't before? Who needs modified training tomorrow?
+
+## Tactical Observations
+Based on the intensity patterns, what can we infer about the session structure? High Z5 bursts suggest sprint work, sustained Z3-Z4 suggests possession-based drills.
+
+## Recommendations for Next Session
+5 specific, numbered recommendations for the next training session based on today's data.
+
+Write like a performance analyst delivering a post-session debrief to the coaching staff.`;
 
   const response = await anthropic.messages.create({
     model: "claude-sonnet-4-20250514",

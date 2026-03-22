@@ -114,7 +114,10 @@ export default async function SessionDetailPage({
         </TabsContent>
 
         <TabsContent value="ai-report">
-          <SessionAiReportTab sessionId={id} />
+          <SessionAiReportTab
+            sessionId={id}
+            sessionContext={`Session: ${session.type} on ${session.date} at ${session.location}, ${session.duration_minutes ?? '?'} min, ${session.age_group} age group. ${(session.wearable_metrics as any[])?.length ?? 0} players tracked. Coach notes: ${session.notes ?? 'none'}. ${loadRecords.length} load records. ${tactical ? `Tactical: ${tactical.avg_formation} formation, ${tactical.pressing_intensity} PPDA, ${tactical.possession_pct}% possession.` : 'No tactical data.'}`}
+          />
         </TabsContent>
       </Tabs>
     </div>
