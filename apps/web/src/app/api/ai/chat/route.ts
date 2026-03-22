@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import Anthropic from "@anthropic-ai/sdk";
+import { buildFullContext } from "@/lib/ai/build-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: NextRequest) {
   try {
-    const { messages, context } = await request.json();
+    const { messages, context: pageContext } = await request.json();
 
     const cookieStore = await cookies();
     const supabase = createServerClient(
@@ -26,31 +27,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const systemPrompt = `You are Opsnerve AI, an elite football performance analyst embedded in a youth football academy's analytics platform. You're having a conversation with a coach or director about their players and sessions.
+    // Get user profile for academy_id
+    const { data: profile } = await supabase
+      .from("users")
+      .select("academy_id, name, role")
+      .eq("auth_user_id", user.id)
+      .single();
 
-You have deep expertise in:
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    // Build full academy data context
+    const fullContext = await buildFullContext(profile.academy_id);
+
+    const systemPrompt = `You are Opsnerve AI, an elite football performance analyst embedded in a youth football academy's analytics platform. You're talking to ${profile.name} (${profile.role}).
+
+You have COMPLETE access to the academy's data. You know every player, every session, every HR reading, every load record, and every tactical metric. Use this data to give precise, data-backed answers.
+
+Your expertise:
 - Heart rate zone analysis (Z1-Z5) and what each zone means for youth players
 - TRIMP (Training Impulse) scoring and session load quantification
 - ACWR (Acute:Chronic Workload Ratio) — optimal 0.8-1.3, caution 1.3-1.5, danger >1.5
 - Youth player development (ages 12-16), growth considerations, injury prevention
 - Tactical analysis: formations, pressing intensity (PPDA), transitions, compactness
 - Periodization and weekly load planning for academy football
+- Player comparison and benchmarking within the squad
+- Match preparation and squad selection based on load data
 
 Your communication style:
 - Direct and actionable — coaches don't have time for fluff
-- Always cite specific numbers from the data when available
-- Give concrete recommendations ("reduce intensity by 20% tomorrow", not "consider reducing")
-- Think like a performance analyst who's been watching every session
-- Use football terminology naturally
-- Be honest about limitations — if you don't have enough data, say so
+- ALWAYS cite specific player names, jersey numbers, and data points
+- Give concrete recommendations ("rest #7 Mostafa tomorrow, his ACWR is 1.73", not "consider reducing load")
+- Compare players to each other and to their own baselines
+- Think like a performance analyst who's been in every session
+- Be honest about limitations — if data is missing, say what's needed
+- When discussing squad selection or tactics, reference the actual data
 
-${context ? `\nCONTEXT DATA:\n${context}` : ""}
+IMPORTANT: You have the FULL academy database below. Reference it in every answer.
 
-When the coach asks follow-up questions, refer back to the data you were given. If they ask about something you don't have data for, tell them what data would be needed.`;
+${fullContext}
+
+${pageContext ? `\nCURRENT VIEW CONTEXT:\n${pageContext}` : ""}`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 800,
+      max_tokens: 1000,
       system: systemPrompt,
       messages: messages.map((m: any) => ({
         role: m.role,

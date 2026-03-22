@@ -309,11 +309,14 @@ export function AiReportChat({
             {messages.length <= 1 && (
               <div className="flex flex-wrap gap-2 mb-3">
                 {[
-                  "Which players need rest tomorrow?",
-                  "How should I adjust next week's intensity?",
-                  "Compare the team's fitness to last week",
-                  "Who's most at risk for injury?",
-                  "What formation worked best?",
+                  "Which players should rest before the next match?",
+                  "Give me a full squad fitness ranking right now",
+                  "Who had the biggest load spike this week?",
+                  "Compare Ahmed and Youssef's last 5 sessions",
+                  "Design next week's training plan based on current loads",
+                  "Who should start Saturday and who should be on the bench?",
+                  "What's our pressing intensity trend over the last 2 weeks?",
+                  "Which players are improving fastest?",
                 ].map((q) => (
                   <button
                     key={q}
