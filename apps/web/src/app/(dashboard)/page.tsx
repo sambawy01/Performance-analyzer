@@ -246,20 +246,20 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Row 1: Stat Cards */}
+      {/* AI Daily Briefing — HERO position, first thing coach sees */}
+      <DailyBriefing
+        todaySession={todaySession}
+        playersAtRisk={briefingPlayersAtRisk}
+        teamReadiness={teamReadiness}
+      />
+
+      {/* Stat Cards */}
       <StatCards
         totalPlayers={totalPlayers ?? 0}
         activeSessions={activeSessions}
         avgTeamHR={avgTeamHR}
         playersAtRisk={playersAtRisk}
         avgTrimp={avgTrimp}
-      />
-
-      {/* Daily Briefing */}
-      <DailyBriefing
-        todaySession={todaySession}
-        playersAtRisk={briefingPlayersAtRisk}
-        teamReadiness={teamReadiness}
       />
 
       {/* Row 2: Charts - Session Intensity + Risk Distribution */}
