@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Card,
   CardHeader,
@@ -18,6 +19,7 @@ import {
   Zap,
   Brain,
   FileText,
+  ChevronDown,
 } from "lucide-react";
 import { HR_ZONE_COLORS, HR_ZONE_LABELS } from "@/lib/hr-zones";
 import type { HrZone } from "@/lib/hr-zones";
@@ -70,6 +72,8 @@ function StatCard({
   subtitle,
   color,
   infoTerm,
+  players,
+  analysis,
 }: {
   icon: React.ElementType;
   label: string;
@@ -77,19 +81,56 @@ function StatCard({
   subtitle?: string;
   color?: string;
   infoTerm?: string;
+  players?: Array<{ name: string; jersey: number; value: string | number }>;
+  analysis?: string;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasDetail = (players && players.length > 0) || analysis;
+
   return (
-    <Card>
+    <Card
+      className={hasDetail ? "cursor-pointer transition-all hover:border-white/20" : ""}
+      onClick={() => hasDetail && setExpanded(!expanded)}
+    >
       <CardContent className="pt-4 pb-3">
-        <div className="flex items-center gap-2 mb-1">
-          <Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} />
-          <p className="text-xs text-muted-foreground">
-            {infoTerm ? <MetricInfo term={infoTerm}>{label}</MetricInfo> : label}
-          </p>
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} />
+            <p className="text-xs text-muted-foreground">
+              {infoTerm ? <MetricInfo term={infoTerm}>{label}</MetricInfo> : label}
+            </p>
+          </div>
+          {hasDetail && (
+            <ChevronDown className={`h-3.5 w-3.5 text-white/30 transition-transform ${expanded ? "rotate-180" : ""}`} />
+          )}
         </div>
         <p className="text-2xl font-bold font-mono">{value}</p>
         {subtitle && (
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        )}
+
+        {expanded && (
+          <div className="mt-3 pt-3 border-t border-white/[0.08] space-y-2">
+            {analysis && (
+              <p className="text-sm text-white/70 leading-relaxed">{analysis}</p>
+            )}
+            {players && players.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Per Player</p>
+                {players.slice(0, 5).map((p, i) => (
+                  <div key={i} className="flex items-center justify-between text-sm">
+                    <span className="text-white/70">
+                      <span className={`font-mono ${i === 0 ? "text-[#00ff88]" : ""}`}>#{p.jersey}</span> {p.name}
+                    </span>
+                    <span className="font-mono font-semibold text-white">{p.value}</span>
+                  </div>
+                ))}
+                {players.length > 5 && (
+                  <p className="text-xs text-white/40">+{players.length - 5} more players</p>
+                )}
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
@@ -294,6 +335,12 @@ export function SessionOverviewTab({
           value={`${avgHr} bpm`}
           color="text-red-500"
           infoTerm="hr-avg"
+          analysis={avgHr ? `Team averaged ${avgHr} bpm this session. ${avgHr > 160 ? "High intensity — monitor recovery." : avgHr > 140 ? "Moderate-high effort — good for development." : "Lower intensity — appropriate for technical/recovery work."}` : undefined}
+          players={[...metrics].sort((a, b) => b.hr_avg - a.hr_avg).slice(0, 5).map(m => ({
+            name: m.players?.name ?? "Unknown",
+            jersey: m.players?.jersey_number ?? 0,
+            value: `${m.hr_avg} bpm`,
+          }))}
         />
         <StatCard
           icon={TrendingUp}
@@ -302,6 +349,11 @@ export function SessionOverviewTab({
           subtitle={`Low: ${minHr} bpm`}
           color="text-orange-500"
           infoTerm="hr-max"
+          players={[...metrics].sort((a, b) => b.hr_max - a.hr_max).slice(0, 5).map(m => ({
+            name: m.players?.name ?? "Unknown",
+            jersey: m.players?.jersey_number ?? 0,
+            value: `${m.hr_max} bpm`,
+          }))}
         />
         <StatCard
           icon={Zap}
@@ -310,6 +362,12 @@ export function SessionOverviewTab({
           subtitle={intensityLabel ?? undefined}
           color={intensityColor || "text-muted-foreground"}
           infoTerm="trimp"
+          analysis={avgTrimp ? `Session load averaged ${avgTrimp} TRIMP. ${intensityLabel ? `Classified as ${intensityLabel.toLowerCase()} intensity.` : ""}` : undefined}
+          players={[...metrics].sort((a, b) => b.trimp_score - a.trimp_score).slice(0, 5).map(m => ({
+            name: m.players?.name ?? "Unknown",
+            jersey: m.players?.jersey_number ?? 0,
+            value: Math.round(m.trimp_score),
+          }))}
         />
         <StatCard
           icon={Users}
@@ -364,12 +422,24 @@ export function SessionOverviewTab({
               label="Avg Distance"
               value={avgDistance ? `${(avgDistance / 1000).toFixed(1)} km` : "--"}
               color="text-[#00d4ff]"
+              analysis={avgDistance ? `Team covered an average of ${(avgDistance / 1000).toFixed(1)} km per player. ${avgDistance > 6000 ? "High volume — great work rate across the squad." : avgDistance > 5000 ? "Good coverage for a training session." : "Lower distance — likely technical or tactical focused session."}` : undefined}
+              players={[...cvMetrics].sort((a, b) => b.total_distance_m - a.total_distance_m).slice(0, 5).map(m => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${(m.total_distance_m / 1000).toFixed(1)} km`,
+              }))}
             />
             <StatCard
               icon={Zap}
               label="Top Speed"
               value={avgMaxSpeed ? `${avgMaxSpeed} km/h` : "--"}
               color="text-[#00ff88]"
+              analysis="Peak speed reached during sprints. Compare to age-group benchmarks: U16 elite = 28-32 km/h."
+              players={[...cvMetrics].sort((a, b) => b.max_speed_kmh - a.max_speed_kmh).slice(0, 5).map(m => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${m.max_speed_kmh.toFixed(1)} km/h`,
+              }))}
             />
             <StatCard
               icon={Zap}
@@ -377,6 +447,12 @@ export function SessionOverviewTab({
               value={avgSprints ?? "--"}
               subtitle={totalSprints ? `${totalSprints} total` : undefined}
               color="text-[#ff6b35]"
+              analysis="Sprints above 20 km/h. More sprints = higher intensity. Compare across sessions to track explosive capacity development."
+              players={[...cvMetrics].sort((a, b) => b.sprint_count - a.sprint_count).slice(0, 5).map(m => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${m.sprint_count} sprints`,
+              }))}
             />
             <StatCard
               icon={TrendingUp}
@@ -384,6 +460,12 @@ export function SessionOverviewTab({
               value={avgHSR ?? "--"}
               subtitle=">15 km/h"
               color="text-[#a855f7]"
+              analysis="Runs above 15 km/h. Includes both sprints and high-tempo runs. Key indicator of work rate and physical capacity."
+              players={[...cvMetrics].sort((a, b) => b.high_speed_run_count - a.high_speed_run_count).slice(0, 5).map(m => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${m.high_speed_run_count} runs`,
+              }))}
             />
             <StatCard
               icon={TrendingUp}
@@ -391,6 +473,12 @@ export function SessionOverviewTab({
               value={avgAccel ?? "--"}
               subtitle=">2.5 m/s²"
               color="text-[#00d4ff]"
+              analysis="Sharp acceleration events above 2.5 m/s². High acceleration count indicates explosive playing style — pressing, counter-attacks, and off-the-ball runs."
+              players={[...cvMetrics].sort((a, b) => b.accel_events - a.accel_events).slice(0, 5).map(m => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${m.accel_events} events`,
+              }))}
             />
             <StatCard
               icon={AlertTriangle}
@@ -398,6 +486,12 @@ export function SessionOverviewTab({
               value={avgDecel ?? "--"}
               subtitle="Injury predictor"
               color="text-[#ff3355]"
+              analysis="Deceleration events above 2.5 m/s². This is the STRONGEST single predictor of soft tissue injuries. Players with consistently high deceleration loads need careful monitoring."
+              players={[...cvMetrics].sort((a, b) => b.decel_events - a.decel_events).slice(0, 5).map(m => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${m.decel_events} events`,
+              }))}
             />
             <StatCard
               icon={Users}
@@ -405,6 +499,12 @@ export function SessionOverviewTab({
               value={hasCvData ? Math.round(cvMetrics.reduce((s, m) => s + (m.off_ball_movement_score ?? 0), 0) / cvMetrics.length) : "--"}
               subtitle="Off-ball quality"
               color="text-[#00ff88]"
+              analysis="AI-derived score (0-100) measuring the quality of a player's movement when they don't have the ball. Higher = better positioning, more intelligent runs."
+              players={[...cvMetrics].filter(m => m.off_ball_movement_score != null).sort((a, b) => (b.off_ball_movement_score ?? 0) - (a.off_ball_movement_score ?? 0)).slice(0, 5).map(m => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${Math.round(m.off_ball_movement_score ?? 0)}/100`,
+              }))}
             />
           </div>
         </div>
