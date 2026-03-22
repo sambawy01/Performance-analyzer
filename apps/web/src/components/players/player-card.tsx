@@ -34,7 +34,7 @@ export function PlayerCard({ player }: { player: Player }) {
                 <AvatarFallback>{initials}</AvatarFallback>
               </Avatar>
               <span
-                className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${statusColor}`}
+                className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background ${statusColor} ${player.status === "active" ? "animate-pulse shadow-[0_0_6px_rgba(0,255,136,0.6)]" : ""}`}
               />
             </div>
             <div className="flex-1">
