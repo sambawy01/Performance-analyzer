@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
-import { getPlayers } from "@/lib/queries/players";
 import { PlayerFilters } from "@/components/players/player-filters";
 import { PlayerCard } from "@/components/players/player-card";
 
@@ -27,28 +26,90 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
 
   if (!profile) return null;
 
-  const players = await getPlayers(profile.academy_id, {
-    ageGroup: params.age_group,
-    position: params.position,
-    status: params.status,
-  });
+  // Fetch players
+  let playersQuery = supabase
+    .from("players")
+    .select("*")
+    .eq("academy_id", profile.academy_id)
+    .order("age_group")
+    .order("jersey_number");
+
+  if (params.age_group) playersQuery = playersQuery.eq("age_group", params.age_group);
+  if (params.position) playersQuery = playersQuery.eq("position", params.position);
+  if (params.status) playersQuery = playersQuery.eq("status", params.status);
+
+  const { data: players } = await playersQuery;
+
+  // Fetch latest load record per player for ACWR
+  const { data: loadRecords } = await supabase
+    .from("load_records")
+    .select("player_id, acwr_ratio, risk_flag, daily_load, date")
+    .order("date", { ascending: false });
+
+  // Fetch latest wearable metrics per player
+  const { data: latestMetrics } = await supabase
+    .from("wearable_metrics")
+    .select("player_id, hr_avg, hr_max, trimp_score, hr_recovery_60s")
+    .order("created_at", { ascending: false });
+
+  // Fetch session count per player (last 28 days)
+  const since28d = new Date();
+  since28d.setDate(since28d.getDate() - 28);
+  const { data: sessionCounts } = await supabase
+    .from("wearable_metrics")
+    .select("player_id")
+    .gte("created_at", since28d.toISOString());
+
+  // Build lookup maps (latest per player)
+  const loadMap = new Map<string, any>();
+  for (const l of loadRecords ?? []) {
+    if (!loadMap.has(l.player_id)) loadMap.set(l.player_id, l);
+  }
+
+  const metricsMap = new Map<string, any>();
+  for (const m of latestMetrics ?? []) {
+    if (!metricsMap.has(m.player_id)) metricsMap.set(m.player_id, m);
+  }
+
+  const sessionCountMap = new Map<string, number>();
+  for (const s of sessionCounts ?? []) {
+    sessionCountMap.set(s.player_id, (sessionCountMap.get(s.player_id) ?? 0) + 1);
+  }
+
+  // Enrich players
+  const enrichedPlayers = (players ?? []).map((p) => ({
+    ...p,
+    acwr: loadMap.get(p.id)?.acwr_ratio ?? null,
+    riskFlag: loadMap.get(p.id)?.risk_flag ?? null,
+    hrAvg: metricsMap.get(p.id)?.hr_avg ?? null,
+    trimp: metricsMap.get(p.id)?.trimp_score ?? null,
+    recovery: metricsMap.get(p.id)?.hr_recovery_60s ?? null,
+    sessions28d: sessionCountMap.get(p.id) ?? 0,
+  }));
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Players ({players.length})</h2>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Squad ({enrichedPlayers.length})</h2>
+          <p className="text-sm text-white/50">
+            {loadMap.size} with load data | {metricsMap.size} with wearable data
+          </p>
+        </div>
+      </div>
 
       <Suspense fallback={<div className="h-10" />}>
         <PlayerFilters />
       </Suspense>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {players.map((player) => (
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        {enrichedPlayers.map((player) => (
           <PlayerCard key={player.id} player={player as any} />
         ))}
       </div>
 
-      {players.length === 0 && (
-        <p className="text-center text-muted-foreground py-8">
+      {enrichedPlayers.length === 0 && (
+        <p className="text-center text-white/40 py-12">
           No players found matching the current filters.
         </p>
       )}
