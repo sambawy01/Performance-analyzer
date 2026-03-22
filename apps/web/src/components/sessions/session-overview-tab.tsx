@@ -89,7 +89,7 @@ function StatCard({
 
   return (
     <Card
-      className={hasDetail ? "cursor-pointer transition-all hover:border-white/20" : ""}
+      className={`${hasDetail ? "cursor-pointer transition-all hover:border-white/20" : ""} ${expanded ? "w-full" : "w-[calc(50%-6px)] md:w-[calc(25%-9px)] lg:w-[calc(14.28%-9px)]"} self-start`}
       onClick={() => hasDetail && setExpanded(!expanded)}
     >
       <CardContent className="pt-4 pb-3">
@@ -328,7 +328,7 @@ export function SessionOverviewTab({
       </Card>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="flex flex-wrap gap-3">
         <StatCard
           icon={Heart}
           label="Avg Heart Rate"
@@ -416,7 +416,7 @@ export function SessionOverviewTab({
       {hasCvData && (
         <div>
           <h3 className="text-sm font-semibold text-white/80 mb-3 uppercase tracking-wider">Physical Performance — Video Tracking</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="flex flex-wrap gap-3">
             <StatCard
               icon={Activity}
               label="Avg Distance"
