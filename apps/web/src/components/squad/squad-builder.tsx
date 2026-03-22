@@ -8,9 +8,17 @@ import {
 } from "./pitch-diagram";
 import { FormationStats } from "./formation-stats";
 import {
+  X,
+  ArrowRightLeft,
+  UserMinus,
   Brain,
-  GripVertical,
+  Shield,
+  Zap,
+  Heart,
+  TrendingUp,
   AlertTriangle,
+  ChevronRight,
+  GripVertical,
   ShieldAlert,
   Clock,
   ChevronDown,
@@ -80,6 +88,208 @@ function getRiskDot(flag: string | null): string {
     default:
       return "bg-white/30";
   }
+}
+
+function getSelectionReason(player: PitchPlayer): string {
+  const acwr = player.acwrRatio;
+  const hr = player.hrAvg;
+  const trimp = player.trimpScore;
+
+  const parts: string[] = [];
+
+  if (acwr != null) {
+    if (acwr >= 0.8 && acwr <= 1.3) parts.push(`ACWR ${acwr.toFixed(2)} — optimal zone, body is adapted to current load`);
+    else if (acwr > 1.3 && acwr <= 1.5) parts.push(`ACWR ${acwr.toFixed(2)} — caution zone, monitor closely but can play`);
+    else if (acwr > 1.5) parts.push(`ACWR ${acwr.toFixed(2)} — danger zone, high injury risk, consider resting`);
+    else parts.push(`ACWR ${acwr.toFixed(2)} — under-training, needs more game time`);
+  }
+
+  if (trimp != null) {
+    if (trimp > 150) parts.push(`High work rate (TRIMP ${Math.round(trimp)}) — consistently putting in effort`);
+    else if (trimp > 100) parts.push(`Good work rate (TRIMP ${Math.round(trimp)}) — reliable contributor`);
+    else parts.push(`Lower session load (TRIMP ${Math.round(trimp)}) — may need more intensity`);
+  }
+
+  if (hr != null) {
+    if (hr < 150) parts.push(`Efficient HR (${hr} bpm avg) — good fitness level`);
+    else if (hr < 165) parts.push(`Moderate HR (${hr} bpm avg) — working hard but sustainable`);
+    else parts.push(`High HR (${hr} bpm avg) — pushing limits, check recovery`);
+  }
+
+  return parts.join(". ") + ".";
+}
+
+function PlayerDetailCard({
+  player,
+  aiResult,
+  allPlayers,
+  startingXI,
+  bench,
+  onClose,
+  onBench,
+  onSwap,
+}: {
+  player: PitchPlayer;
+  aiResult: AiRecommendation | null;
+  allPlayers: PitchPlayer[];
+  startingXI: PitchPlayer[];
+  bench: PitchPlayer[];
+  onClose: () => void;
+  onBench: (player: PitchPlayer) => void;
+  onSwap: (playerOut: PitchPlayer, playerIn: PitchPlayer) => void;
+}) {
+  const [showSwapOptions, setShowSwapOptions] = useState(false);
+
+  const riskColor =
+    player.riskFlag === "green" ? "text-[#00ff88]" :
+    player.riskFlag === "amber" ? "text-[#ff6b35]" :
+    player.riskFlag === "red" ? "text-[#ff3355]" :
+    "text-[#00d4ff]";
+
+  const riskBg =
+    player.riskFlag === "green" ? "bg-[#00ff88]/10 border-[#00ff88]/20" :
+    player.riskFlag === "amber" ? "bg-[#ff6b35]/10 border-[#ff6b35]/20" :
+    player.riskFlag === "red" ? "bg-[#ff3355]/10 border-[#ff3355]/20" :
+    "bg-[#00d4ff]/10 border-[#00d4ff]/20";
+
+  // Find AI reasoning for this player if available
+  const aiPlayerReason = aiResult?.startingXI?.find(
+    (p: any) => p.playerId === player.id || p.name === player.name
+  );
+
+  // Get bench alternatives for the same position type
+  const positionGroup = ["GK"].includes(player.position) ? ["GK"] :
+    ["CB", "FB", "LB", "RB"].includes(player.position) ? ["CB", "FB", "LB", "RB"] :
+    ["CM", "CDM", "CAM"].includes(player.position) ? ["CM", "CDM", "CAM"] :
+    ["W", "LW", "RW", "LM", "RM"].includes(player.position) ? ["W", "LW", "RW", "LM", "RM"] :
+    ["ST"];
+
+  const swapCandidates = bench.filter((p) =>
+    positionGroup.includes(p.position) || p.position === player.position
+  );
+
+  // If no position match, show all bench players
+  const allSwapOptions = swapCandidates.length > 0 ? swapCandidates : bench;
+
+  return (
+    <div className="rounded-xl border border-white/[0.1] bg-[#0f1629]/95 backdrop-blur-xl p-4 space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`h-12 w-12 rounded-full ${riskBg} border flex items-center justify-center`}>
+            <span className={`font-mono text-xl font-bold ${riskColor}`}>
+              {player.jerseyNumber}
+            </span>
+          </div>
+          <div>
+            <h4 className="font-semibold text-white text-lg">{player.name}</h4>
+            <span className="text-sm text-white/60">{player.position}</span>
+          </div>
+        </div>
+        <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+
+      {/* Stats grid */}
+      <div className="grid grid-cols-3 gap-3">
+        <div className={`rounded-lg ${riskBg} border p-2 text-center`}>
+          <p className="data-label mb-0.5">ACWR</p>
+          <p className={`font-mono text-xl font-bold ${riskColor}`}>
+            {player.acwrRatio?.toFixed(2) ?? "N/A"}
+          </p>
+          <p className="text-xs text-white/50">
+            {player.riskFlag === "green" ? "Optimal" : player.riskFlag === "amber" ? "Caution" : player.riskFlag === "red" ? "Danger" : "Low"}
+          </p>
+        </div>
+        <div className="rounded-lg bg-white/[0.04] border border-white/[0.08] p-2 text-center">
+          <p className="data-label mb-0.5">Avg HR</p>
+          <p className="font-mono text-xl font-bold text-white">{player.hrAvg ?? "—"}</p>
+          <p className="text-xs text-white/50">bpm</p>
+        </div>
+        <div className="rounded-lg bg-white/[0.04] border border-white/[0.08] p-2 text-center">
+          <p className="data-label mb-0.5">TRIMP</p>
+          <p className="font-mono text-xl font-bold text-white">{player.trimpScore?.toFixed(0) ?? "—"}</p>
+          <p className="text-xs text-white/50">load</p>
+        </div>
+      </div>
+
+      {/* AI Reasoning */}
+      <div className="rounded-lg bg-[#a855f7]/5 border border-[#a855f7]/15 p-3">
+        <div className="flex items-center gap-1.5 mb-2">
+          <Brain className="h-4 w-4 text-[#a855f7]" />
+          <span className="text-xs font-semibold uppercase tracking-wider text-[#a855f7]">
+            Why this player
+          </span>
+        </div>
+        <p className="text-sm text-white/80 leading-relaxed">
+          {aiPlayerReason?.reason || getSelectionReason(player)}
+        </p>
+      </div>
+
+      {/* Action buttons */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => onBench(player)}
+          className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-[#ff6b35]/30 bg-[#ff6b35]/10 px-3 py-2.5 text-sm font-medium text-[#ff6b35] hover:bg-[#ff6b35]/20 transition-colors"
+        >
+          <UserMinus className="h-4 w-4" />
+          Move to Bench
+        </button>
+        <button
+          onClick={() => setShowSwapOptions(!showSwapOptions)}
+          className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-[#00d4ff]/30 bg-[#00d4ff]/10 px-3 py-2.5 text-sm font-medium text-[#00d4ff] hover:bg-[#00d4ff]/20 transition-colors"
+        >
+          <ArrowRightLeft className="h-4 w-4" />
+          Swap Player
+        </button>
+      </div>
+
+      {/* Swap options */}
+      {showSwapOptions && (
+        <div className="space-y-2">
+          <p className="text-xs text-white/50 uppercase tracking-wider font-semibold">
+            Available replacements ({allSwapOptions.length})
+          </p>
+          {allSwapOptions.length === 0 ? (
+            <p className="text-sm text-white/40 italic">No bench players available for this position.</p>
+          ) : (
+            <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
+              {allSwapOptions.map((candidate) => {
+                const candColor =
+                  candidate.riskFlag === "green" ? "text-[#00ff88]" :
+                  candidate.riskFlag === "amber" ? "text-[#ff6b35]" :
+                  candidate.riskFlag === "red" ? "text-[#ff3355]" :
+                  "text-[#00d4ff]";
+
+                return (
+                  <button
+                    key={candidate.id}
+                    onClick={() => onSwap(player, candidate)}
+                    className="w-full flex items-center justify-between rounded-lg border border-white/[0.08] bg-white/[0.03] p-2.5 hover:bg-[#00d4ff]/10 hover:border-[#00d4ff]/20 transition-all group"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-white/80">
+                        #{candidate.jerseyNumber}
+                      </span>
+                      <span className="text-sm text-white/80">{candidate.name}</span>
+                      <span className="text-xs text-white/40">{candidate.position}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`font-mono text-xs ${candColor}`}>
+                        ACWR {candidate.acwrRatio?.toFixed(2) ?? "—"}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-white/20 group-hover:text-[#00d4ff] transition-colors" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function SquadBuilder({
@@ -311,62 +521,30 @@ export function SquadBuilder({
             />
           </div>
 
-          {/* Selected player popup */}
+          {/* Selected player detail card */}
           {selectedPlayer && (
-            <div className="glass rounded-xl p-4 border border-white/[0.1]">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-2xl font-bold text-[#00d4ff]">
-                    #{selectedPlayer.jerseyNumber}
-                  </span>
-                  <div>
-                    <h4 className="font-semibold">{selectedPlayer.name}</h4>
-                    <span className="text-xs text-muted-foreground">
-                      {selectedPlayer.position}
-                    </span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setSelectedPlayer(null)}
-                  className="text-muted-foreground hover:text-white text-sm"
-                >
-                  Close
-                </button>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="text-center">
-                  <p className="data-label mb-1">ACWR</p>
-                  <p
-                    className={`stat-number text-lg ${
-                      selectedPlayer.riskFlag === "green"
-                        ? "text-[#00ff88]"
-                        : selectedPlayer.riskFlag === "amber"
-                          ? "text-[#ff6b35]"
-                          : selectedPlayer.riskFlag === "red"
-                            ? "text-[#ff3355]"
-                            : "text-[#00d4ff]"
-                    }`}
-                  >
-                    {selectedPlayer.acwrRatio?.toFixed(2) ?? "N/A"}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="data-label mb-1">HR Avg</p>
-                  <p className="stat-number text-lg text-white">
-                    {selectedPlayer.hrAvg ?? "N/A"}
-                    <span className="text-xs text-muted-foreground ml-0.5">
-                      bpm
-                    </span>
-                  </p>
-                </div>
-                <div className="text-center">
-                  <p className="data-label mb-1">TRIMP</p>
-                  <p className="stat-number text-lg text-white">
-                    {selectedPlayer.trimpScore?.toFixed(0) ?? "N/A"}
-                  </p>
-                </div>
-              </div>
-            </div>
+            <PlayerDetailCard
+              player={selectedPlayer}
+              aiResult={aiResult}
+              allPlayers={players}
+              startingXI={startingXI}
+              bench={bench}
+              onClose={() => setSelectedPlayer(null)}
+              onBench={(player) => {
+                setStartingXIIds((prev) => prev.filter((id) => id !== player.id));
+                setBenchIds((prev) => [player.id, ...prev]);
+                setSelectedPlayer(null);
+              }}
+              onSwap={(playerOut, playerIn) => {
+                setStartingXIIds((prev) =>
+                  prev.map((id) => (id === playerOut.id ? playerIn.id : id))
+                );
+                setBenchIds((prev) =>
+                  prev.map((id) => (id === playerIn.id ? playerOut.id : id))
+                );
+                setSelectedPlayer(playerIn);
+              }}
+            />
           )}
 
           {/* Formation comparison */}
