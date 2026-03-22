@@ -19,37 +19,47 @@ const stats = [
     key: "totalPlayers" as const,
     label: "Total Players",
     icon: Users,
-    color: "text-blue-600",
-    bgColor: "bg-blue-50",
+    color: "text-[#00d4ff]",
+    glowColor: "shadow-[0_0_12px_rgba(0,212,255,0.25)]",
+    iconBg: "bg-[#00d4ff]/10",
+    borderGlow: "hover:border-[#00d4ff]/30",
   },
   {
     key: "activeSessions" as const,
     label: "Sessions (14d)",
     icon: CalendarDays,
-    color: "text-indigo-600",
-    bgColor: "bg-indigo-50",
+    color: "text-[#a855f7]",
+    glowColor: "shadow-[0_0_12px_rgba(168,85,247,0.25)]",
+    iconBg: "bg-[#a855f7]/10",
+    borderGlow: "hover:border-[#a855f7]/30",
   },
   {
     key: "avgTeamHR" as const,
     label: "Avg Team HR",
     icon: Heart,
-    color: "text-rose-600",
-    bgColor: "bg-rose-50",
+    color: "text-[#ff3355]",
+    glowColor: "shadow-[0_0_12px_rgba(255,51,85,0.25)]",
+    iconBg: "bg-[#ff3355]/10",
+    borderGlow: "hover:border-[#ff3355]/30",
     suffix: " bpm",
   },
   {
     key: "playersAtRisk" as const,
     label: "Players at Risk",
     icon: AlertTriangle,
-    color: "text-amber-600",
-    bgColor: "bg-amber-50",
+    color: "text-[#ff6b35]",
+    glowColor: "shadow-[0_0_12px_rgba(255,107,53,0.25)]",
+    iconBg: "bg-[#ff6b35]/10",
+    borderGlow: "hover:border-[#ff6b35]/30",
   },
   {
     key: "avgTrimp" as const,
     label: "Avg TRIMP",
     icon: Activity,
-    color: "text-emerald-600",
-    bgColor: "bg-emerald-50",
+    color: "text-[#00ff88]",
+    glowColor: "shadow-[0_0_12px_rgba(0,255,136,0.25)]",
+    iconBg: "bg-[#00ff88]/10",
+    borderGlow: "hover:border-[#00ff88]/30",
   },
 ];
 
@@ -79,25 +89,23 @@ export function StatCards({
         return (
           <div
             key={stat.key}
-            className="rounded-xl border bg-card p-4 flex flex-col gap-3 shadow-sm"
+            className={`rounded-xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl p-4 flex flex-col gap-3 transition-all duration-300 hover:bg-white/[0.06] ${stat.borderGlow} ${stat.glowColor} hover:scale-[1.02]`}
           >
             <div className="flex items-center justify-between">
-              <div
-                className={`rounded-lg p-2 ${stat.bgColor}`}
-              >
+              <div className={`rounded-lg p-2 ${stat.iconBg}`}>
                 <Icon className={`h-4 w-4 ${stat.color}`} />
               </div>
             </div>
             <div>
-              <p className="text-2xl font-bold tracking-tight">
+              <p className="text-2xl font-bold tracking-tight font-mono stat-number text-white">
                 {value}
                 {suffix && (
-                  <span className="text-sm font-normal text-muted-foreground ml-1">
+                  <span className="text-xs font-normal text-white/30 ml-1 font-sans">
                     {suffix}
                   </span>
                 )}
               </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
+              <p className="text-[10px] text-white/40 mt-0.5 uppercase tracking-wider">
                 {stat.label}
               </p>
             </div>

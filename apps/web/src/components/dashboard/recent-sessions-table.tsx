@@ -30,28 +30,28 @@ export function RecentSessionsTable({
   sessions: SessionRow[];
 }) {
   return (
-    <div className="rounded-xl border bg-card shadow-sm">
-      <div className="flex items-center gap-2 p-4 pb-3 border-b">
-        <CalendarDays className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold">Recent Sessions</h3>
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.04] backdrop-blur-xl">
+      <div className="flex items-center gap-2 p-4 pb-3 border-b border-white/[0.06]">
+        <CalendarDays className="h-4 w-4 text-[#00d4ff]" />
+        <h3 className="text-sm font-semibold text-white">Recent Sessions</h3>
       </div>
       <div className="overflow-x-auto">
         <Table>
           <TableHeader>
-            <TableRow className="hover:bg-transparent">
-              <TableHead className="text-xs font-medium text-muted-foreground">
+            <TableRow className="hover:bg-transparent border-white/[0.06]">
+              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
                 Date
               </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground">
+              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
                 Type
               </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground">
+              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
                 Age Group
               </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground">
+              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
                 Location
               </TableHead>
-              <TableHead className="text-xs font-medium text-muted-foreground">
+              <TableHead className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
                 Duration
               </TableHead>
             </TableRow>
@@ -61,7 +61,7 @@ export function RecentSessionsTable({
               <TableRow>
                 <TableCell
                   colSpan={5}
-                  className="text-center text-sm text-muted-foreground py-8"
+                  className="text-center text-sm text-white/30 py-8"
                 >
                   No sessions yet.
                 </TableCell>
@@ -70,18 +70,18 @@ export function RecentSessionsTable({
             {sessions.map((s) => {
               const typeBg =
                 s.type === "match"
-                  ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
-                  : "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100";
+                  ? "bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20 shadow-[0_0_6px_rgba(0,255,136,0.15)]"
+                  : "bg-[#00d4ff]/10 text-[#00d4ff] border-[#00d4ff]/20 shadow-[0_0_6px_rgba(0,212,255,0.15)]";
 
               return (
                 <TableRow
                   key={s.id}
-                  className="cursor-pointer hover:bg-muted/50 transition-colors"
+                  className="cursor-pointer border-white/[0.04] hover:bg-white/[0.04] transition-all duration-200"
                 >
                   <TableCell>
                     <Link
                       href={`/sessions/${s.id}`}
-                      className="hover:underline font-medium text-sm"
+                      className="hover:text-[#00d4ff] font-medium text-sm text-white transition-colors"
                     >
                       {formatDate(s.date)}
                     </Link>
@@ -97,15 +97,15 @@ export function RecentSessionsTable({
                   <TableCell>
                     <Badge
                       variant="outline"
-                      className="text-[11px] font-medium"
+                      className="text-[11px] font-medium border-white/10 text-white/60"
                     >
                       {ageGroupLabel(s.age_group)}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-white/40">
                     {s.location}
                   </TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-white/40 font-mono">
                     {s.duration_minutes ? `${s.duration_minutes} min` : "--"}
                   </TableCell>
                 </TableRow>

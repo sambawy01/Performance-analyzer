@@ -37,39 +37,51 @@ export function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm glow-blue relative z-10">
       <CardHeader>
-        <CardTitle className="text-2xl">Opsnerve Performance Analyzer</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Sign in to your account
+        <CardTitle className="text-2xl text-gradient tracking-tight">
+          Opsnerve
+        </CardTitle>
+        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
+          Performance Analyzer
         </p>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email" className="text-[10px] uppercase tracking-widest text-white/40">
+              Email
+            </Label>
             <Input
               id="email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              className="bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus-visible:border-[#00d4ff]/50 focus-visible:ring-[#00d4ff]/20 focus-visible:shadow-[0_0_15px_rgba(0,212,255,0.15)]"
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password" className="text-[10px] uppercase tracking-widest text-white/40">
+              Password
+            </Label>
             <Input
               id="password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              className="bg-white/[0.04] border-white/10 text-white placeholder:text-white/20 focus-visible:border-[#00d4ff]/50 focus-visible:ring-[#00d4ff]/20 focus-visible:shadow-[0_0_15px_rgba(0,212,255,0.15)]"
             />
           </div>
           {error && (
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-sm text-[#ff3355] text-glow-red">{error}</p>
           )}
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full bg-gradient-to-r from-[#00d4ff] to-[#a855f7] text-white font-semibold hover:shadow-[0_0_20px_rgba(0,212,255,0.4)] transition-all duration-300 border-0"
+            disabled={loading}
+          >
             {loading ? "Signing in..." : "Sign in"}
           </Button>
         </form>

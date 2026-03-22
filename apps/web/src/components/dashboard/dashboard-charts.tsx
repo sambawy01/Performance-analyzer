@@ -24,10 +24,10 @@ interface DashboardChartsProps {
 }
 
 const RISK_COLORS: Record<string, string> = {
-  blue: "#3b82f6",
-  green: "#22c55e",
-  amber: "#f59e0b",
-  red: "#ef4444",
+  blue: "#00d4ff",
+  green: "#00ff88",
+  amber: "#ff6b35",
+  red: "#ff3355",
 };
 
 const RISK_LABELS: Record<string, string> = {
@@ -47,8 +47,8 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
   if (!mounted) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="h-[300px] rounded-lg border bg-card animate-pulse" />
-        <div className="h-[300px] rounded-lg border bg-card animate-pulse" />
+        <div className="h-[300px] rounded-xl border border-white/[0.08] bg-white/[0.04] animate-pulse" />
+        <div className="h-[300px] rounded-xl border border-white/[0.08] bg-white/[0.04] animate-pulse" />
       </div>
     );
   }
@@ -76,45 +76,59 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {/* Session Intensity - simple bar chart */}
+      {/* Session Intensity */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Session Intensity (14 days)</CardTitle>
         </CardHeader>
         <CardContent>
           {chartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No session data in the last 14 days.</p>
+            <p className="text-sm text-white/30 py-8 text-center">No session data in the last 14 days.</p>
           ) : (
             <div className="space-y-3">
               {chartData.map((d, i) => (
                 <div key={i} className="space-y-1">
                   <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">{d.date}</span>
-                    <span className="font-medium">
+                    <span className="text-white/30 uppercase tracking-wider text-[10px]">{d.date}</span>
+                    <span className="font-medium font-mono text-white/60">
                       {d.avgHr > 0 ? `${d.avgHr} bpm` : "No HR"}
-                      {d.avgTrimp > 0 ? ` · TRIMP ${d.avgTrimp}` : ""}
+                      {d.avgTrimp > 0 ? ` / TRIMP ${d.avgTrimp}` : ""}
                     </span>
                   </div>
                   <div className="flex gap-1">
                     {d.avgHr > 0 && (
-                      <div className="h-3 rounded-full bg-blue-500" style={{ width: `${Math.min((d.avgHr / 200) * 100, 100)}%` }} title={`Avg HR: ${d.avgHr}`} />
+                      <div
+                        className="h-3 rounded-full bg-gradient-to-r from-[#00d4ff] to-[#00d4ff]/60"
+                        style={{
+                          width: `${Math.min((d.avgHr / 200) * 100, 100)}%`,
+                          boxShadow: "0 0 8px rgba(0,212,255,0.3)",
+                        }}
+                        title={`Avg HR: ${d.avgHr}`}
+                      />
                     )}
                     {d.avgTrimp > 0 && (
-                      <div className="h-3 rounded-full bg-orange-500" style={{ width: `${Math.min((d.avgTrimp / 300) * 100, 100)}%` }} title={`TRIMP: ${d.avgTrimp}`} />
+                      <div
+                        className="h-3 rounded-full bg-gradient-to-r from-[#ff6b35] to-[#ff6b35]/60"
+                        style={{
+                          width: `${Math.min((d.avgTrimp / 300) * 100, 100)}%`,
+                          boxShadow: "0 0 8px rgba(255,107,53,0.3)",
+                        }}
+                        title={`TRIMP: ${d.avgTrimp}`}
+                      />
                     )}
                     {d.avgHr === 0 && d.avgTrimp === 0 && (
-                      <div className="h-3 rounded-full bg-muted w-full" />
+                      <div className="h-3 rounded-full bg-white/[0.04] w-full" />
                     )}
                   </div>
                 </div>
               ))}
-              <div className="flex gap-4 text-xs text-muted-foreground mt-2 pt-2 border-t">
+              <div className="flex gap-4 text-xs text-white/30 mt-2 pt-2 border-t border-white/[0.06]">
                 <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-blue-500" />
+                  <div className="h-2 w-2 rounded-full bg-[#00d4ff] shadow-[0_0_4px_rgba(0,212,255,0.5)]" />
                   Avg HR
                 </div>
                 <div className="flex items-center gap-1">
-                  <div className="h-2 w-2 rounded-full bg-orange-500" />
+                  <div className="h-2 w-2 rounded-full bg-[#ff6b35] shadow-[0_0_4px_rgba(255,107,53,0.5)]" />
                   Avg TRIMP
                 </div>
               </div>
@@ -123,18 +137,18 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
         </CardContent>
       </Card>
 
-      {/* Risk Distribution - simple visual */}
+      {/* Risk Distribution */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Injury Risk Distribution</CardTitle>
         </CardHeader>
         <CardContent>
           {riskTotal === 0 ? (
-            <p className="text-sm text-muted-foreground py-8 text-center">No load data yet.</p>
+            <p className="text-sm text-white/30 py-8 text-center">No load data yet.</p>
           ) : (
             <div className="space-y-4">
               {/* Stacked bar */}
-              <div className="h-8 rounded-full overflow-hidden flex">
+              <div className="h-8 rounded-full overflow-hidden flex border border-white/[0.06]">
                 {riskEntries.map(([key, value]) => (
                   <div
                     key={key}
@@ -142,6 +156,7 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
                     style={{
                       width: `${(value / riskTotal) * 100}%`,
                       backgroundColor: RISK_COLORS[key],
+                      boxShadow: `0 0 10px ${RISK_COLORS[key]}40`,
                     }}
                     title={`${RISK_LABELS[key]}: ${value}`}
                   />
@@ -154,18 +169,21 @@ export function DashboardCharts({ trendData, riskDistribution }: DashboardCharts
                   <div key={key} className="flex items-center gap-2">
                     <div
                       className="h-3 w-3 rounded-full shrink-0"
-                      style={{ backgroundColor: RISK_COLORS[key] }}
+                      style={{
+                        backgroundColor: RISK_COLORS[key],
+                        boxShadow: `0 0 6px ${RISK_COLORS[key]}40`,
+                      }}
                     />
                     <div>
-                      <p className="text-sm font-medium">{value} players</p>
-                      <p className="text-xs text-muted-foreground">{RISK_LABELS[key]}</p>
+                      <p className="text-sm font-medium font-mono text-white">{value} players</p>
+                      <p className="text-[10px] text-white/30 uppercase tracking-wider">{RISK_LABELS[key]}</p>
                     </div>
                   </div>
                 ))}
               </div>
 
               {/* Summary */}
-              <p className="text-xs text-muted-foreground border-t pt-3">
+              <p className="text-xs text-white/40 border-t border-white/[0.06] pt-3 italic">
                 {riskDistribution.red > 0
                   ? `${riskDistribution.red} player${riskDistribution.red > 1 ? "s" : ""} in the danger zone — immediate load reduction recommended.`
                   : riskDistribution.amber > 0

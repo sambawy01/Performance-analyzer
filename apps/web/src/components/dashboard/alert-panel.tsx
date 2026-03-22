@@ -122,16 +122,16 @@ function getAiPrevention(alert: Alert): string[] {
 
 function getAlertIcon(riskFlag: string) {
   if (riskFlag === "red")
-    return <AlertTriangle className="h-5 w-5 text-red-500 shrink-0" />;
+    return <AlertTriangle className="h-5 w-5 text-[#ff3355] shrink-0 drop-shadow-[0_0_6px_rgba(255,51,85,0.5)]" />;
   if (riskFlag === "amber")
-    return <TrendingUp className="h-5 w-5 text-amber-500 shrink-0" />;
-  return <Activity className="h-5 w-5 text-blue-500 shrink-0" />;
+    return <TrendingUp className="h-5 w-5 text-[#ff6b35] shrink-0 drop-shadow-[0_0_6px_rgba(255,107,53,0.5)]" />;
+  return <Activity className="h-5 w-5 text-[#00d4ff] shrink-0 drop-shadow-[0_0_6px_rgba(0,212,255,0.5)]" />;
 }
 
 function getRiskBorderColor(riskFlag: string): string {
-  if (riskFlag === "red") return "border-l-4 border-l-red-500";
-  if (riskFlag === "amber") return "border-l-4 border-l-amber-400";
-  return "border-l-4 border-l-blue-400";
+  if (riskFlag === "red") return "border-l-4 border-l-[#ff3355] shadow-[inset_4px_0_8px_-4px_rgba(255,51,85,0.3)]";
+  if (riskFlag === "amber") return "border-l-4 border-l-[#ff6b35] shadow-[inset_4px_0_8px_-4px_rgba(255,107,53,0.3)]";
+  return "border-l-4 border-l-[#00d4ff] shadow-[inset_4px_0_8px_-4px_rgba(0,212,255,0.3)]";
 }
 
 function AlertCard({ alert }: { alert: Alert }) {
@@ -139,60 +139,60 @@ function AlertCard({ alert }: { alert: Alert }) {
 
   return (
     <div
-      className={`rounded-md border p-3 ${getRiskBorderColor(alert.risk_flag)} cursor-pointer transition-colors hover:bg-muted/30`}
+      className={`rounded-lg border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl p-3 ${getRiskBorderColor(alert.risk_flag)} cursor-pointer transition-all duration-200 hover:bg-white/[0.05]`}
       onClick={() => setExpanded(!expanded)}
     >
       <div className="flex items-start gap-3">
         {getAlertIcon(alert.risk_flag)}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm font-semibold">
+            <span className="text-sm font-semibold text-white">
               #{alert.players.jersey_number} {alert.players.name}
             </span>
             <div className="flex items-center gap-2">
               <Badge variant={riskFlagBadgeVariant(alert.risk_flag)}>
-                ACWR {alert.acwr_ratio}
+                <span className="font-mono">ACWR {alert.acwr_ratio}</span>
               </Badge>
               {expanded ? (
-                <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                <ChevronUp className="h-4 w-4 text-white/30" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-white/30" />
               )}
             </div>
           </div>
-          <div className="flex gap-2 text-xs text-muted-foreground mb-1.5">
+          <div className="flex gap-2 text-xs text-white/30 mb-1.5 uppercase tracking-wider">
             <span>{alert.players.position}</span>
             <span>{ageGroupLabel(alert.players.age_group)}</span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
+          <p className="text-xs text-white/50 leading-relaxed">
             {getAlertMessage(alert)}
           </p>
           <div className="flex gap-4 mt-2 text-xs">
-            <span className="text-muted-foreground">
+            <span className="text-white/30">
               7d load:{" "}
-              <span className="font-medium text-foreground">
+              <span className="font-medium font-mono text-white">
                 {Math.round(alert.acute_load_7d)}
               </span>
             </span>
-            <span className="text-muted-foreground">
+            <span className="text-white/30">
               28d avg:{" "}
-              <span className="font-medium text-foreground">
+              <span className="font-medium font-mono text-white">
                 {Math.round(alert.chronic_load_28d)}
               </span>
             </span>
           </div>
 
           {expanded && (
-            <div className="mt-4 space-y-4 border-t pt-4">
+            <div className="mt-4 space-y-4 border-t border-white/[0.06] pt-4">
               {/* AI Analysis */}
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Search className="h-3.5 w-3.5 text-blue-500" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                  <Search className="h-3.5 w-3.5 text-[#00d4ff]" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#00d4ff]">
                     Why this is happening
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">
+                <p className="text-xs text-white/50 leading-relaxed italic">
                   {getAiReason(alert)}
                 </p>
               </div>
@@ -200,8 +200,8 @@ function AlertCard({ alert }: { alert: Alert }) {
               {/* Suggestions */}
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-amber-600">
+                  <Lightbulb className="h-3.5 w-3.5 text-[#ff6b35]" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#ff6b35]">
                     What to do now
                   </span>
                 </div>
@@ -209,9 +209,9 @@ function AlertCard({ alert }: { alert: Alert }) {
                   {getAiSuggestion(alert).map((s, i) => (
                     <li
                       key={i}
-                      className="text-xs text-muted-foreground flex items-start gap-2"
+                      className="text-xs text-white/50 flex items-start gap-2"
                     >
-                      <span className="text-amber-500 mt-0.5 shrink-0">
+                      <span className="text-[#ff6b35] mt-0.5 shrink-0 font-mono text-[10px]">
                         {i + 1}.
                       </span>
                       {s}
@@ -223,8 +223,8 @@ function AlertCard({ alert }: { alert: Alert }) {
               {/* Prevention */}
               <div>
                 <div className="flex items-center gap-1.5 mb-2">
-                  <Shield className="h-3.5 w-3.5 text-green-500" />
-                  <span className="text-xs font-semibold uppercase tracking-wide text-green-600">
+                  <Shield className="h-3.5 w-3.5 text-[#00ff88]" />
+                  <span className="text-[10px] font-semibold uppercase tracking-widest text-[#00ff88]">
                     Prevention measures
                   </span>
                 </div>
@@ -232,9 +232,9 @@ function AlertCard({ alert }: { alert: Alert }) {
                   {getAiPrevention(alert).map((p, i) => (
                     <li
                       key={i}
-                      className="text-xs text-muted-foreground flex items-start gap-2"
+                      className="text-xs text-white/50 flex items-start gap-2"
                     >
-                      <span className="text-green-500 mt-0.5 shrink-0">
+                      <span className="text-[#00ff88] mt-0.5 shrink-0 font-mono text-[10px]">
                         {i + 1}.
                       </span>
                       {p}
@@ -244,9 +244,9 @@ function AlertCard({ alert }: { alert: Alert }) {
               </div>
 
               {/* AI badge */}
-              <div className="flex items-center gap-1.5 pt-2 border-t">
-                <Brain className="h-3 w-3 text-violet-500" />
-                <span className="text-[10px] text-violet-500 font-medium">
+              <div className="flex items-center gap-1.5 pt-2 border-t border-white/[0.06]">
+                <Brain className="h-3 w-3 text-[#a855f7]" />
+                <span className="text-[10px] text-[#a855f7] font-medium italic">
                   AI-generated analysis based on ACWR data, position, and age
                   group
                 </span>
@@ -265,17 +265,17 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
+            <Activity className="h-5 w-5 text-[#00ff88]" />
             Injury Risk Alerts
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center py-6 text-center">
-            <div className="rounded-full bg-green-50 p-3 mb-3">
-              <Activity className="h-6 w-6 text-green-500" />
+            <div className="rounded-full bg-[#00ff88]/10 p-3 mb-3 shadow-[0_0_15px_rgba(0,255,136,0.2)]">
+              <Activity className="h-6 w-6 text-[#00ff88]" />
             </div>
-            <p className="text-sm font-medium text-green-700">All clear</p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-sm font-medium text-[#00ff88]">All clear</p>
+            <p className="text-xs text-white/30 mt-1">
               No players in the amber or red ACWR zone.
             </p>
           </div>
@@ -291,17 +291,19 @@ export function AlertPanel({ alerts }: { alerts: Alert[] }) {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-red-500" />
+          <AlertTriangle className="h-5 w-5 text-[#ff3355] drop-shadow-[0_0_6px_rgba(255,51,85,0.5)]" />
           Injury Risk Alerts
         </CardTitle>
         <div className="flex gap-2 mt-1">
           {redCount > 0 && (
-            <Badge variant="destructive">{redCount} high risk</Badge>
+            <Badge variant="destructive" className="animate-pulse-slow">
+              {redCount} high risk
+            </Badge>
           )}
           {amberCount > 0 && (
             <Badge
               variant="default"
-              className="bg-amber-500 hover:bg-amber-600"
+              className="bg-[#ff6b35]/15 text-[#ff6b35] border-[#ff6b35]/30 shadow-[0_0_8px_rgba(255,107,53,0.2)]"
             >
               {amberCount} caution
             </Badge>

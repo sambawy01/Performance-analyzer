@@ -7,10 +7,10 @@ interface RiskDonutProps {
 }
 
 const RISK_COLORS: Record<string, string> = {
-  blue: "#3b82f6",
-  green: "#22c55e",
-  amber: "#f59e0b",
-  red: "#ef4444",
+  blue: "#00d4ff",
+  green: "#00ff88",
+  amber: "#ff6b35",
+  red: "#ff3355",
 };
 
 const RISK_LABELS: Record<string, string> = {
@@ -26,7 +26,7 @@ export default function RiskDonut({ distribution }: RiskDonutProps) {
 
   if (total === 0) {
     return (
-      <div className="flex items-center justify-center h-[260px] text-sm text-muted-foreground">
+      <div className="flex items-center justify-center h-[260px] text-sm text-white/30">
         No load data yet.
       </div>
     );
@@ -53,6 +53,7 @@ export default function RiskDonut({ distribution }: RiskDonutProps) {
               outerRadius={85}
               paddingAngle={3}
               strokeWidth={0}
+              style={{ filter: "drop-shadow(0 0 8px rgba(0,212,255,0.2))" }}
             >
               {pieData.map((entry, index) => (
                 <Cell key={index} fill={entry.color} />
@@ -60,11 +61,13 @@ export default function RiskDonut({ distribution }: RiskDonutProps) {
             </Pie>
             <Tooltip
               contentStyle={{
-                backgroundColor: "white",
-                border: "1px solid #e5e7eb",
+                backgroundColor: "rgba(15, 22, 41, 0.95)",
+                backdropFilter: "blur(20px)",
+                border: "1px solid rgba(255,255,255,0.1)",
                 borderRadius: "8px",
                 fontSize: "12px",
-                boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                boxShadow: "0 0 20px rgba(0,212,255,0.15)",
+                color: "#e2e8f0",
               }}
               formatter={(value) => [`${value} players`]}
             />
@@ -72,8 +75,8 @@ export default function RiskDonut({ distribution }: RiskDonutProps) {
         </ResponsiveContainer>
         {/* Center label */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span className="text-2xl font-bold">{total}</span>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-wide">
+          <span className="text-2xl font-bold font-mono text-white stat-number">{total}</span>
+          <span className="text-[10px] text-white/30 uppercase tracking-widest">
             Players
           </span>
         </div>
@@ -84,11 +87,14 @@ export default function RiskDonut({ distribution }: RiskDonutProps) {
           <div key={entry.name} className="flex items-center gap-1.5">
             <div
               className="h-2.5 w-2.5 rounded-full"
-              style={{ backgroundColor: entry.color }}
+              style={{
+                backgroundColor: entry.color,
+                boxShadow: `0 0 6px ${entry.color}40`,
+              }}
             />
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs text-white/40">
               {entry.name}{" "}
-              <span className="font-medium text-foreground">{entry.value}</span>
+              <span className="font-medium font-mono text-white">{entry.value}</span>
             </span>
           </div>
         ))}
