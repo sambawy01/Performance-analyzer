@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { HR_ZONE_COLORS, HR_ZONE_LABELS } from "@/lib/hr-zones";
 import type { HrZone } from "@/lib/hr-zones";
+import { MetricInfo } from "@/components/ui/metric-info";
 
 interface OverviewTabProps {
   session: {
@@ -57,21 +58,25 @@ function StatCard({
   value,
   subtitle,
   color,
+  infoTerm,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   subtitle?: string;
   color?: string;
+  infoTerm?: string;
 }) {
   return (
     <Card>
       <CardContent className="pt-4 pb-3">
         <div className="flex items-center gap-2 mb-1">
           <Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} />
-          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-xs text-muted-foreground">
+            {infoTerm ? <MetricInfo term={infoTerm}>{label}</MetricInfo> : label}
+          </p>
         </div>
-        <p className="text-2xl font-bold">{value}</p>
+        <p className="text-2xl font-bold font-mono">{value}</p>
         {subtitle && (
           <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
         )}
@@ -252,6 +257,7 @@ export function SessionOverviewTab({
           label="Avg Heart Rate"
           value={`${avgHr} bpm`}
           color="text-red-500"
+          infoTerm="hr-avg"
         />
         <StatCard
           icon={TrendingUp}
@@ -259,6 +265,7 @@ export function SessionOverviewTab({
           value={`${maxHr} bpm`}
           subtitle={`Low: ${minHr} bpm`}
           color="text-orange-500"
+          infoTerm="hr-max"
         />
         <StatCard
           icon={Zap}
@@ -266,12 +273,14 @@ export function SessionOverviewTab({
           value={avgTrimp ?? "--"}
           subtitle={intensityLabel ?? undefined}
           color={intensityColor || "text-muted-foreground"}
+          infoTerm="trimp"
         />
         <StatCard
           icon={Users}
           label="Players Tracked"
           value={metrics.length}
           color="text-blue-500"
+          infoTerm="players-tracked"
         />
         <StatCard
           icon={Clock}
@@ -286,6 +295,7 @@ export function SessionOverviewTab({
         <StatCard
           icon={AlertTriangle}
           label="Risk Flags"
+          infoTerm="risk-flag"
           value={
             redFlags.length + amberFlags.length === 0
               ? "None"
@@ -315,7 +325,7 @@ export function SessionOverviewTab({
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                Team HR Zone Distribution
+                <MetricInfo term="hr-zones">Team HR Zone Distribution</MetricInfo>
               </CardTitle>
               <CardDescription>
                 Average time spent in each zone across all players

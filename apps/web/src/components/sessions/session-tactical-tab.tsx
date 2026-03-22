@@ -24,6 +24,7 @@ import {
   Shield,
   Swords,
 } from "lucide-react";
+import { MetricInfo } from "@/components/ui/metric-info";
 
 interface TacticalData {
   avg_formation: string | null;
@@ -139,7 +140,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
               <Crosshair className="h-4 w-4 text-[#00d4ff]" />
-              Formation
+              <MetricInfo term="formation">Formation</MetricInfo>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -171,7 +172,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Target className="h-4 w-4 text-[#00d4ff]" />
-                  Possession Analysis
+                  <MetricInfo term="possession">Possession Analysis</MetricInfo>
                 </CardTitle>
                 {possessionTrend && (
                   <Badge variant="outline" className={`font-mono text-xs ${possessionTrend.color} border-white/10`}>
@@ -212,7 +213,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Swords className="h-4 w-4 text-[#ff6b35]" />
-                Pressing Analysis (PPDA)
+                <MetricInfo term="ppda">Pressing Analysis (PPDA)</MetricInfo>
               </CardTitle>
               {pressingTrend && (
                 <Badge variant="outline" className={`font-mono text-xs ${pressingTrend.color} border-white/10`}>
@@ -245,7 +246,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm flex items-center gap-2">
                   <Shield className="h-4 w-4 text-[#00ff88]" />
-                  Defensive Shape
+                  <MetricInfo term="compactness">Defensive Shape</MetricInfo>
                 </CardTitle>
                 {compactTrend && (
                   <Badge variant="outline" className={`font-mono text-xs ${compactTrend.color} border-white/10`}>
@@ -258,20 +259,20 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
             <CardContent>
               <div className="grid grid-cols-3 gap-4 mb-3">
                 <div>
-                  <p className="data-label mb-1">Compactness</p>
+                  <p className="data-label mb-1"><MetricInfo term="compactness">Compactness</MetricInfo></p>
                   <p className="text-xl font-mono font-bold text-white">{tactical.compactness_avg.toFixed(1)}m</p>
                   <p className="text-[10px] text-white/30">±{tactical.compactness_std.toFixed(1)}m</p>
                 </div>
                 {tactical.defensive_line_height_avg !== null && (
                   <div>
-                    <p className="data-label mb-1">Def. Line</p>
+                    <p className="data-label mb-1"><MetricInfo term="def-line">Def. Line</MetricInfo></p>
                     <p className="text-xl font-mono font-bold text-white">{tactical.defensive_line_height_avg.toFixed(0)}m</p>
                     <p className="text-[10px] text-white/30">from own goal</p>
                   </div>
                 )}
                 {tactical.team_width_avg !== null && tactical.team_length_avg !== null && (
                   <div>
-                    <p className="data-label mb-1">Team Shape</p>
+                    <p className="data-label mb-1"><MetricInfo term="team-shape">Team Shape</MetricInfo></p>
                     <p className="text-xl font-mono font-bold text-white">{tactical.team_width_avg.toFixed(0)}×{tactical.team_length_avg.toFixed(0)}</p>
                     <p className="text-[10px] text-white/30">W × L meters</p>
                   </div>
@@ -290,7 +291,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Zap className="h-4 w-4 text-[#ff6b35]" />
-                Transition Analysis
+                <MetricInfo term="transition-atk">Transition Analysis</MetricInfo>
               </CardTitle>
             </CardHeader>
             <CardContent>
