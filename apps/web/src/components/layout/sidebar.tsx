@@ -2,9 +2,11 @@ import Link from "next/link";
 import {
   LayoutDashboard,
   CalendarDays,
+  CalendarClock,
   Users,
   Radio,
   Settings,
+  ShieldHalf,
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +26,18 @@ const navItems = [
     href: "/players",
     label: "Players",
     icon: Users,
+    roles: ["coach", "analyst", "director"],
+  },
+  {
+    href: "/planner",
+    label: "Planner",
+    icon: CalendarClock,
+    roles: ["coach", "analyst", "director"],
+  },
+  {
+    href: "/squad-builder",
+    label: "Squad Builder",
+    icon: ShieldHalf,
     roles: ["coach", "analyst", "director"],
   },
   {
