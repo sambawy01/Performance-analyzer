@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
+import { Outfit, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Opsnerve Performance Analyzer",
@@ -12,8 +25,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
-      <body className="font-sans antialiased bg-[#0a0e1a] bg-grid-pattern min-h-screen">
+    <html lang="en" className={`dark ${outfit.variable} ${jetbrainsMono.variable}`}>
+      <body className="font-outfit antialiased bg-[#0a0e1a] bg-grid-pattern min-h-screen tracking-tight">
         {children}
       </body>
     </html>

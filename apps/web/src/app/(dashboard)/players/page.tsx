@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getPlayers } from "@/lib/queries/players";
 import { PlayerFilters } from "@/components/players/player-filters";
@@ -36,7 +37,9 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Players ({players.length})</h2>
 
-      <PlayerFilters />
+      <Suspense fallback={<div className="h-10" />}>
+        <PlayerFilters />
+      </Suspense>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {players.map((player) => (

@@ -5,22 +5,13 @@ export async function getSessions(
   filters?: {
     ageGroup?: string;
     type?: string;
-    dateFrom?: string;
-    dateTo?: string;
   }
 ) {
   const supabase = await createClient();
 
   let query = supabase
     .from("sessions")
-    .select(
-      `
-      *,
-      users!sessions_coach_id_fkey(name),
-      wearable_sessions(count),
-      videos(count)
-    `
-    )
+    .select("*")
     .eq("academy_id", academyId)
     .order("date", { ascending: false });
 
@@ -30,57 +21,52 @@ export async function getSessions(
   if (filters?.type) {
     query = query.eq("type", filters.type);
   }
-  if (filters?.dateFrom) {
-    query = query.gte("date", filters.dateFrom);
-  }
-  if (filters?.dateTo) {
-    query = query.lte("date", filters.dateTo);
-  }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) console.error("getSessions error:", error.message);
   return data ?? [];
 }
 
 export async function getSessionById(sessionId: string) {
   const supabase = await createClient();
 
-  const { data } = await supabase
+  // Fetch session separately — no complex joins that break with RLS
+  const { data: session, error: sessError } = await supabase
     .from("sessions")
-    .select(
-      `
-      *,
-      users!sessions_coach_id_fkey(name),
-      videos(*),
-      video_tags(*, players(name, jersey_number)),
-      wearable_sessions(
-        *,
-        players(name, jersey_number, position, age_group, photo_url, hr_max_measured, dob)
-      ),
-      wearable_metrics(
-        *,
-        players(name, jersey_number, position, photo_url)
-      )
-    `
-    )
+    .select("*")
     .eq("id", sessionId)
     .single();
 
-  return data;
+  if (sessError) {
+    console.error("getSessionById error:", sessError.message);
+    return null;
+  }
+  if (!session) return null;
+
+  // Fetch related data separately
+  const [videosRes, tagsRes, wearableMetricsRes] = await Promise.all([
+    supabase.from("videos").select("*").eq("session_id", sessionId),
+    supabase.from("video_tags").select("*, players(name, jersey_number)").eq("video_id", sessionId),
+    supabase.from("wearable_metrics").select("*, players(name, jersey_number, position, photo_url)").eq("session_id", sessionId),
+  ]);
+
+  return {
+    ...session,
+    videos: videosRes.data ?? [],
+    video_tags: tagsRes.data ?? [],
+    wearable_metrics: wearableMetricsRes.data ?? [],
+  };
 }
 
 export async function getSessionLoadRecords(sessionId: string) {
   const supabase = await createClient();
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("load_records")
-    .select(
-      `
-      *,
-      players(name, jersey_number, position)
-    `
-    )
+    .select("*, players(name, jersey_number, position)")
     .eq("session_id", sessionId);
 
+  if (error) console.error("getSessionLoadRecords error:", error.message);
   return data ?? [];
 }
 

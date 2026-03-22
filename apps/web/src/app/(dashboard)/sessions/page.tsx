@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getSessions } from "@/lib/queries/sessions";
 import { SessionFilters } from "@/components/sessions/session-filters";
@@ -38,7 +39,9 @@ export default async function SessionsPage({ searchParams }: SessionsPageProps) 
         <CreateSessionDialog academyId={profile.academy_id} />
       </div>
 
-      <SessionFilters />
+      <Suspense fallback={<div className="h-10" />}>
+        <SessionFilters />
+      </Suspense>
 
       <RecentSessionsTable sessions={sessions as any} />
     </div>

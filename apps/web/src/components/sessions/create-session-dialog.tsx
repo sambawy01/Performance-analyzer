@@ -60,11 +60,9 @@ export function CreateSessionDialog({ academyId }: { academyId: string }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          New Session
-        </Button>
+      <DialogTrigger className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-[#00d4ff] to-[#a855f7] px-4 py-2 text-sm font-medium text-white hover:shadow-[0_0_20px_rgba(0,212,255,0.4)] transition-all duration-300">
+        <Plus className="h-4 w-4 mr-2" />
+        New Session
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

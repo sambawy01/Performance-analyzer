@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
 import { getSessionById, getSessionLoadRecords } from "@/lib/queries/sessions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -24,10 +25,19 @@ export default async function SessionDetailPage({
   params,
 }: SessionDetailPageProps) {
   const { id } = await params;
+  const supabase = await createClient();
   const [session, loadRecords] = await Promise.all([
     getSessionById(id),
     getSessionLoadRecords(id),
   ]);
+
+  // Fetch tactical data separately
+  const { data: tactical } = await supabase
+    .from("tactical_metrics")
+    .select("*")
+    .eq("session_id", id)
+    .single();
+
 
   if (!session) {
     notFound();
@@ -92,7 +102,7 @@ export default async function SessionDetailPage({
         </TabsContent>
 
         <TabsContent value="tactical">
-          <SessionTacticalTab />
+          <SessionTacticalTab tactical={tactical as any} />
         </TabsContent>
 
         <TabsContent value="video">
