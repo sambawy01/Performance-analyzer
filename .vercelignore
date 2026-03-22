@@ -1,0 +1,8 @@
+node_modules
+.next
+.git
+.worktrees
+packages/supabase/.temp
+packages/supabase/.branches
+*.output
+.DS_Store
