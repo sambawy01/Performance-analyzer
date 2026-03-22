@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatDate, ageGroupLabel, sessionTypeLabel } from "@/lib/format";
+import { CalendarDays } from "lucide-react";
 
 interface LatestSessionCardProps {
   session: {
@@ -18,8 +19,7 @@ interface LatestSessionCardProps {
     age_group: string;
     location: string;
     duration_minutes: number | null;
-    wearable_sessions: Array<{ count: number }>;
-    videos: Array<{ count: number }>;
+    notes: string | null;
   } | null;
 }
 
@@ -28,20 +28,23 @@ export function LatestSessionCard({ session }: LatestSessionCardProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Latest Session</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5" />
+            Latest Session
+          </CardTitle>
           <CardDescription>No sessions recorded yet.</CardDescription>
         </CardHeader>
       </Card>
     );
   }
 
-  const wearableCount = session.wearable_sessions?.[0]?.count ?? 0;
-  const videoCount = session.videos?.[0]?.count ?? 0;
-
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Latest Session</CardTitle>
+        <CardTitle className="flex items-center gap-2">
+          <CalendarDays className="h-5 w-5" />
+          Latest Session
+        </CardTitle>
         <CardDescription>{formatDate(session.date)}</CardDescription>
       </CardHeader>
       <CardContent>
@@ -53,16 +56,17 @@ export function LatestSessionCard({ session }: LatestSessionCardProps) {
             <Badge variant="secondary">{session.duration_minutes} min</Badge>
           )}
         </div>
-        <div className="flex gap-4 text-sm text-muted-foreground">
-          {wearableCount > 0 && <span>W: {wearableCount} players</span>}
-          {videoCount > 0 && <span>V: {videoCount} videos</span>}
-          {wearableCount === 0 && videoCount === 0 && (
-            <span>No data sources attached</span>
-          )}
-        </div>
+        {session.notes && (
+          <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+            {session.notes}
+          </p>
+        )}
       </CardContent>
       <CardFooter>
-        <Link href={`/sessions/${session.id}`} className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+        <Link
+          href={`/sessions/${session.id}`}
+          className="inline-flex items-center justify-center rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
           View Session
         </Link>
       </CardFooter>

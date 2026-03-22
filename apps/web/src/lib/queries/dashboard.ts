@@ -8,13 +8,7 @@ export async function getLatestSession(
 
   let query = supabase
     .from("sessions")
-    .select(
-      `
-      *,
-      wearable_sessions(count),
-      videos(count)
-    `
-    )
+    .select("*")
     .eq("academy_id", academyId)
     .order("date", { ascending: false })
     .limit(1);
@@ -23,7 +17,10 @@ export async function getLatestSession(
     query = query.in("age_group", ageGroups);
   }
 
-  const { data } = await query.single();
+  const { data, error } = await query.single();
+  if (error) {
+    console.error("getLatestSession error:", error.message);
+  }
   return data;
 }
 
@@ -33,7 +30,6 @@ export async function getAlerts(
 ) {
   const supabase = await createClient();
 
-  // Get recent load records with amber/red flags
   let query = supabase
     .from("load_records")
     .select(
@@ -51,7 +47,10 @@ export async function getAlerts(
     query = query.in("players.age_group", ageGroups);
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) {
+    console.error("getAlerts error:", error.message);
+  }
   return data ?? [];
 }
 
@@ -62,15 +61,10 @@ export async function getRecentSessions(
 ) {
   const supabase = await createClient();
 
+  // Simple query without cross-table joins to avoid RLS complications
   let query = supabase
     .from("sessions")
-    .select(
-      `
-      *,
-      wearable_sessions(count),
-      videos(count)
-    `
-    )
+    .select("*")
     .eq("academy_id", academyId)
     .order("date", { ascending: false })
     .limit(limit);
@@ -79,7 +73,10 @@ export async function getRecentSessions(
     query = query.in("age_group", ageGroups);
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) {
+    console.error("getRecentSessions error:", error.message);
+  }
   return data ?? [];
 }
 
@@ -94,12 +91,7 @@ export async function getTrendData(
 
   let query = supabase
     .from("sessions")
-    .select(
-      `
-      id, date, age_group, type,
-      wearable_metrics(hr_avg, hr_max, trimp_score)
-    `
-    )
+    .select("id, date, age_group, type")
     .eq("academy_id", academyId)
     .gte("date", since.toISOString().split("T")[0])
     .order("date", { ascending: true });
@@ -108,8 +100,37 @@ export async function getTrendData(
     query = query.in("age_group", ageGroups);
   }
 
-  const { data } = await query;
-  return data ?? [];
+  const { data: sessions, error: sessError } = await query;
+  if (sessError) {
+    console.error("getTrendData sessions error:", sessError.message);
+    return [];
+  }
+
+  if (!sessions || sessions.length === 0) return [];
+
+  // Fetch wearable metrics for these sessions separately
+  const sessionIds = sessions.map((s) => s.id);
+  const { data: metrics, error: metError } = await supabase
+    .from("wearable_metrics")
+    .select("session_id, hr_avg, hr_max, trimp_score")
+    .in("session_id", sessionIds);
+
+  if (metError) {
+    console.error("getTrendData metrics error:", metError.message);
+  }
+
+  // Merge metrics into sessions
+  const metricsMap = new Map<string, Array<{ hr_avg: number; hr_max: number; trimp_score: number }>>();
+  for (const m of metrics ?? []) {
+    const existing = metricsMap.get(m.session_id) ?? [];
+    existing.push({ hr_avg: m.hr_avg, hr_max: m.hr_max, trimp_score: m.trimp_score });
+    metricsMap.set(m.session_id, existing);
+  }
+
+  return sessions.map((s) => ({
+    ...s,
+    wearable_metrics: metricsMap.get(s.id) ?? [],
+  }));
 }
 
 export async function getRiskDistribution(
@@ -118,12 +139,13 @@ export async function getRiskDistribution(
 ) {
   const supabase = await createClient();
 
-  // Get latest load record per player
   let query = supabase
     .from("load_records")
     .select(
       `
       risk_flag,
+      player_id,
+      date,
       players!inner(academy_id, age_group)
     `
     )
@@ -134,17 +156,22 @@ export async function getRiskDistribution(
     query = query.in("players.age_group", ageGroups);
   }
 
-  const { data } = await query;
+  const { data, error } = await query;
+  if (error) {
+    console.error("getRiskDistribution error:", error.message);
+  }
 
-  // Deduplicate to latest per player (the query orders by date desc)
+  // Deduplicate to latest per player
   const seen = new Set<string>();
   const distribution = { blue: 0, green: 0, amber: 0, red: 0 };
 
   for (const record of data ?? []) {
-    const key = `${record.risk_flag}`;
-    if (!seen.has(key)) {
-      seen.add(key);
-      distribution[record.risk_flag as keyof typeof distribution]++;
+    if (!seen.has(record.player_id)) {
+      seen.add(record.player_id);
+      const flag = record.risk_flag as keyof typeof distribution;
+      if (flag in distribution) {
+        distribution[flag]++;
+      }
     }
   }
 
