@@ -273,7 +273,7 @@ export function PitchDiagram({
                 cy={pos.y}
                 r={isHovered ? 5 : 3.5}
                 fill={riskColor}
-                opacity={isHovered ? 0.2 : 0.1}
+                opacity={isHovered ? 0.25 : 0.1}
               />
 
               {/* Player circle */}
@@ -284,7 +284,6 @@ export function PitchDiagram({
                 fill="#0a1628"
                 stroke={riskColor}
                 strokeWidth="0.4"
-                className="transition-all duration-200"
               />
 
               {/* ACWR badge dot */}
@@ -295,88 +294,50 @@ export function PitchDiagram({
                 fill={riskColor}
               />
 
-              {/* Jersey number */}
+              {/* Position label INSIDE circle */}
               <text
                 x={pos.x}
                 y={pos.y + 0.8}
                 textAnchor="middle"
                 fill="white"
-                fontSize="2.2"
-                fontWeight="bold"
-                fontFamily="ui-monospace, monospace"
-                style={{ pointerEvents: "none" }}
-              >
-                {player.jerseyNumber}
-              </text>
-
-              {/* Player name */}
-              <text
-                x={pos.x}
-                y={pos.y + 5}
-                textAnchor="middle"
-                fill="rgba(255,255,255,0.7)"
-                fontSize="1.5"
-                style={{ pointerEvents: "none" }}
-              >
-                {player.name.split(" ").pop()}
-              </text>
-
-              {/* Position label */}
-              <text
-                x={pos.x}
-                y={pos.y - 4}
-                textAnchor="middle"
-                fill="rgba(255,255,255,0.35)"
-                fontSize="1.2"
-                fontWeight="600"
+                fontSize="1.8"
+                fontWeight="700"
+                fontFamily="Arial, Helvetica, sans-serif"
                 style={{ pointerEvents: "none" }}
               >
                 {pos.label}
               </text>
-
-              {/* Hover tooltip */}
-              {isHovered && (
-                <g>
-                  <rect
-                    x={pos.x - 14}
-                    y={pos.y + 7}
-                    width="28"
-                    height="10"
-                    rx="1"
-                    fill="rgba(10, 14, 26, 0.95)"
-                    stroke="rgba(255,255,255,0.15)"
-                    strokeWidth="0.2"
-                  />
-                  <text
-                    x={pos.x}
-                    y={pos.y + 11}
-                    textAnchor="middle"
-                    fill="white"
-                    fontSize="1.6"
-                    fontWeight="600"
-                  >
-                    #{player.jerseyNumber} {player.name}
-                  </text>
-                  <text
-                    x={pos.x}
-                    y={pos.y + 14}
-                    textAnchor="middle"
-                    fill={riskColor}
-                    fontSize="1.4"
-                    fontFamily="ui-monospace, monospace"
-                  >
-                    ACWR:{" "}
-                    {player.acwrRatio != null
-                      ? player.acwrRatio.toFixed(2)
-                      : "N/A"}{" "}
-                    | HR: {player.hrAvg ?? "N/A"}
-                  </text>
-                </g>
-              )}
             </g>
           );
         })}
       </svg>
+
+      {/* HTML tooltips — rendered outside SVG for proper text rendering */}
+      {positions.map((pos, i) => {
+        const player = startingXI[i];
+        if (!player || hoveredIndex !== i) return null;
+
+        return (
+          <div
+            key={`tooltip-${i}`}
+            className="absolute pointer-events-none z-10"
+            style={{
+              left: `${pos.x}%`,
+              top: `${pos.y + 5}%`,
+              transform: "translate(-50%, 0)",
+            }}
+          >
+            <div className="bg-[#0a0e1a]/95 backdrop-blur-xl border border-white/15 rounded-lg px-3 py-2 shadow-[0_0_20px_rgba(0,0,0,0.5)] whitespace-nowrap">
+              <p className="text-sm font-bold text-white">
+                #{player.jerseyNumber} {player.name}
+              </p>
+              <p className="text-xs font-mono" style={{ color: getRiskColor(player.riskFlag) }}>
+                ACWR: {player.acwrRatio?.toFixed(2) ?? "N/A"} | HR: {player.hrAvg ?? "N/A"} bpm
+              </p>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
