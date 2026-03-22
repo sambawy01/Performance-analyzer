@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { HelpCircle, X } from "lucide-react";
 
 interface MetricInfoProps {
@@ -9,7 +10,6 @@ interface MetricInfoProps {
 }
 
 const METRIC_EXPLANATIONS: Record<string, { title: string; what: string; why: string; good: string; bad: string }> = {
-  // Heart rate metrics
   "hr-avg": {
     title: "Average Heart Rate",
     what: "The average number of heartbeats per minute across the entire session for this player.",
@@ -35,10 +35,9 @@ const METRIC_EXPLANATIONS: Record<string, { title: string; what: string; why: st
     title: "HR Recovery (60s)",
     what: "How many BPM the heart rate drops in the first 60 seconds after exercise stops.",
     why: "One of the best indicators of cardiovascular fitness. Better fitness = faster recovery. Also an early warning for overtraining — declining recovery signals accumulated fatigue.",
-    good: "Above 30 bpm drop = excellent fitness. 20-30 bpm = good. Regular monitoring shows fitness trends.",
+    good: "Above 30 bpm drop = excellent fitness. 20-30 bpm = good.",
     bad: "Below 15 bpm or declining over weeks suggests overtraining, illness, or insufficient rest.",
   },
-  // Load metrics
   "trimp": {
     title: "TRIMP (Training Impulse)",
     what: "A single number that captures total session load by combining duration and heart rate intensity. Higher = more physically demanding session.",
@@ -60,142 +59,154 @@ const METRIC_EXPLANATIONS: Record<string, { title: string; what: string; why: st
     good: "Green = keep going. Amber = monitor and consider reducing. Blue = player needs more load.",
     bad: "Red = immediate action needed. Reduce load, consider rest day, don't play full match.",
   },
-  // Tactical metrics
   "formation": {
     title: "Formation",
-    what: "The team's average positional shape during the session (e.g., 4-3-3, 4-2-3-1), calculated from player positions tracked by video analysis.",
-    why: "Shows the team's tactical structure and how it changed during the session. Multiple changes may indicate reactive coaching or unsettled shape.",
+    what: "The team's average positional shape during the session (e.g., 4-3-3), calculated from player positions tracked by video analysis.",
+    why: "Shows the team's tactical structure and how it changed during the session.",
     good: "Consistent formation with planned changes (e.g., switching to 4-4-2 to defend a lead).",
     bad: "Frequent unplanned changes suggest the team is struggling to maintain shape.",
   },
   "possession": {
     title: "Possession %",
     what: "The percentage of time the team had control of the ball during the session or match.",
-    why: "Indicates playing style and control. High possession teams play through the middle, low possession teams rely on counter-attacks.",
-    good: "Match: 50%+ shows control. Training: depends on drill design. Not always better — some teams win with 35% possession.",
-    bad: "Below 40% in a match suggests the team was under sustained pressure and couldn't keep the ball.",
+    why: "Indicates playing style and control. Not always better — some teams win with 35% possession.",
+    good: "Match: 50%+ shows control. Training: depends on drill design.",
+    bad: "Below 40% in a match suggests the team was under sustained pressure.",
   },
   "ppda": {
     title: "PPDA (Passes Per Defensive Action)",
     what: "How many passes the opponent makes before your team wins the ball back. Lower = more aggressive pressing.",
-    why: "Measures pressing intensity objectively. Elite pressing teams like Liverpool operate at 6-8 PPDA. More conservative teams at 12+.",
-    good: "Under 10 = active pressing. 8 or below = aggressive high press. Appropriate for session goals.",
-    bad: "Above 14 = very passive. Either a tactical choice, or the team is too tired to press effectively.",
+    why: "Measures pressing intensity objectively. Elite pressing teams operate at 6-8 PPDA.",
+    good: "Under 10 = active pressing. 8 or below = aggressive high press.",
+    bad: "Above 14 = very passive. Either tactical or the team is too tired to press.",
   },
   "compactness": {
     title: "Compactness",
     what: "The average distance (in meters) between the team's furthest-apart players. Measured from video tracking.",
-    why: "Shows how tight the team stays as a unit. Compact teams are harder to play through but can be vulnerable to long balls.",
+    why: "Shows how tight the team stays as a unit. Compact teams are harder to play through.",
     good: "Under 30m = well-organized. 25-28m is ideal for most youth teams.",
-    bad: "Above 35m = stretched. Large gaps between defense and midfield that opponents can exploit.",
+    bad: "Above 35m = stretched. Large gaps between lines that opponents can exploit.",
   },
   "def-line": {
     title: "Defensive Line Height",
-    what: "How far from the team's own goal line the defensive line (back 4) positions itself, in meters.",
-    why: "Higher line = more aggressive, squeezes play into opponent's half. Lower line = more conservative, protects the goal.",
-    good: "35-45m for youth teams. Should match the team's pressing strategy — high press needs high line.",
-    bad: "High line (45m+) without corresponding pressing exposes space behind. Low line (<30m) invites sustained pressure.",
+    what: "How far from the team's own goal line the back 4 positions itself, in meters.",
+    why: "Higher line = more aggressive, squeezes play. Lower line = more conservative.",
+    good: "35-45m for youth teams. Should match pressing strategy — high press needs high line.",
+    bad: "High line without pressing exposes space behind. Low line invites sustained pressure.",
   },
   "team-shape": {
     title: "Team Shape (W × L)",
-    what: "The width and length of the team's positional spread in meters. Width = side to side. Length = goal to goal.",
-    why: "Shows how the team occupies space. Wider teams stretch the opposition but are harder to keep compact. Longer teams cover more ground but leave gaps.",
-    good: "Width 35-42m, Length 28-35m for most formations. Narrow in defense, wide in attack.",
-    bad: "Width below 30m = too narrow, easy to press. Length above 40m = disconnected lines.",
+    what: "The width and length of the team's positional spread in meters.",
+    why: "Shows how the team occupies space. Wider = stretches opposition. Narrower = easier to press.",
+    good: "Width 35-42m, Length 28-35m. Narrow in defense, wide in attack.",
+    bad: "Width below 30m = too narrow. Length above 40m = disconnected lines.",
   },
   "transition-atk": {
     title: "Transition Speed (Def → Atk)",
-    what: "Average time in seconds for the team to reorganize from a defensive shape into an attacking shape after winning the ball.",
-    why: "Faster transitions create more goal-scoring opportunities. The best moments to score are immediately after winning the ball when the opponent is out of shape.",
+    what: "Average time in seconds for the team to switch from defense to attack after winning the ball.",
+    why: "Faster transitions create more goal-scoring opportunities — the opponent is out of shape.",
     good: "Under 3.5 seconds = excellent counter-attacking ability.",
-    bad: "Above 5 seconds = the team is too slow to exploit turnovers. Opponents have time to get back in shape.",
+    bad: "Above 5 seconds = too slow to exploit turnovers.",
   },
   "transition-def": {
     title: "Transition Speed (Atk → Def)",
     what: "Average time in seconds for the team to get back into defensive shape after losing the ball.",
-    why: "Faster defensive transitions prevent counter-attacks. This is about work rate and tactical discipline — do players sprint back immediately?",
-    good: "Under 3 seconds = excellent defensive recovery. Players react immediately to loss of possession.",
-    bad: "Above 4 seconds = vulnerable to counter-attacks. Players are ball-watching instead of recovering.",
+    why: "Faster defensive transitions prevent counter-attacks. About work rate and tactical discipline.",
+    good: "Under 3 seconds = excellent defensive recovery.",
+    bad: "Above 4 seconds = vulnerable to counter-attacks.",
   },
-  // Session metrics
   "session-intensity": {
     title: "Session Intensity",
-    what: "An overall rating of how physically demanding the session was, based on average TRIMP across all players.",
-    why: "Helps plan the training week — you need a mix of high, medium, and low intensity days. Back-to-back high-intensity days increase injury risk.",
-    good: "Matches the session's purpose. Recovery sessions should be 'Low', match prep should be 'Moderate-High'.",
-    bad: "Recovery sessions rated 'High' or match prep rated 'Very Low' suggest the session didn't achieve its goal.",
+    what: "An overall rating of how physically demanding the session was, based on average TRIMP.",
+    why: "Helps plan the training week — you need a mix of high, medium, and low intensity days.",
+    good: "Matches the session's purpose. Recovery = Low, Match prep = Moderate-High.",
+    bad: "Recovery sessions rated 'High' suggest the session didn't achieve its goal.",
   },
   "players-tracked": {
     title: "Players Tracked",
     what: "The number of players who wore chest strap heart rate monitors during this session.",
-    why: "More players tracked = more complete picture. If players are missing, their load can't be monitored and injury risk can't be assessed.",
+    why: "More players tracked = more complete picture. Missing players can't be monitored.",
     good: "All players in the session wearing straps.",
-    bad: "Missing players means gaps in load tracking — their ACWR calculations will be inaccurate.",
+    bad: "Missing players means gaps in load tracking and inaccurate ACWR calculations.",
   },
 };
+
+function InfoModal({ info, onClose }: { info: typeof METRIC_EXPLANATIONS[string]; onClose: () => void }) {
+  useEffect(() => {
+    function handleEsc(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleEsc);
+    return () => document.removeEventListener("keydown", handleEsc);
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+      style={{ backgroundColor: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)" }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-xl border border-white/10 shadow-2xl p-5"
+        style={{ backgroundColor: "#0f1629", boxShadow: "0 0 40px rgba(0,212,255,0.15)" }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <HelpCircle className="h-5 w-5 text-[#00d4ff]" />
+            <h3 className="font-semibold text-white text-base">{info.title}</h3>
+          </div>
+          <button onClick={onClose} className="text-white/30 hover:text-white transition-colors">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-[#00d4ff] mb-1.5 font-semibold">What is it?</p>
+            <p className="text-sm text-white/70 leading-relaxed">{info.what}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-[#a855f7] mb-1.5 font-semibold">Why does it matter?</p>
+            <p className="text-sm text-white/70 leading-relaxed">{info.why}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-[#00ff88] mb-1.5 font-semibold">What&apos;s good?</p>
+            <p className="text-sm text-white/70 leading-relaxed">{info.good}</p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-widest text-[#ff3355] mb-1.5 font-semibold">Warning signs</p>
+            <p className="text-sm text-white/70 leading-relaxed">{info.bad}</p>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 export function MetricInfo({ term, children }: MetricInfoProps) {
   const [open, setOpen] = useState(false);
   const info = METRIC_EXPLANATIONS[term];
 
-  if (!info) {
-    return <>{children}</>;
-  }
+  if (!info) return <>{children}</>;
 
   return (
-    <span className="inline-flex items-center gap-1.5">
-      {children}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen(!open);
-        }}
-        className="shrink-0 opacity-30 hover:opacity-100 transition-opacity"
-        title={`What is ${info.title}?`}
-      >
-        <HelpCircle className="h-3.5 w-3.5 text-[#00d4ff]" />
-      </button>
-
-      {open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setOpen(false)}
+    <>
+      <span className="inline-flex items-center gap-1">
+        {children}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(true);
+          }}
+          className="shrink-0 opacity-30 hover:opacity-100 transition-opacity"
+          title={`What is ${info.title}?`}
         >
-          <div
-            className="bg-[#0f1629] border border-white/10 rounded-xl shadow-[0_0_40px_rgba(0,212,255,0.15)] max-w-md w-full mx-4 p-5"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <HelpCircle className="h-5 w-5 text-[#00d4ff]" />
-                <h3 className="font-semibold text-white">{info.title}</h3>
-              </div>
-              <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-[#00d4ff] mb-1">What is it?</p>
-                <p className="text-sm text-white/70 leading-relaxed">{info.what}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-[#a855f7] mb-1">Why does it matter?</p>
-                <p className="text-sm text-white/70 leading-relaxed">{info.why}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-[#00ff88] mb-1">What&apos;s good?</p>
-                <p className="text-sm text-white/70 leading-relaxed">{info.good}</p>
-              </div>
-              <div>
-                <p className="text-[10px] uppercase tracking-widest text-[#ff3355] mb-1">Warning signs</p>
-                <p className="text-sm text-white/70 leading-relaxed">{info.bad}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </span>
+          <HelpCircle className="h-3.5 w-3.5 text-[#00d4ff]" />
+        </button>
+      </span>
+      {open && <InfoModal info={info} onClose={() => setOpen(false)} />}
+    </>
   );
 }
