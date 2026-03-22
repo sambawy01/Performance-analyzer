@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AgeGroup, SessionType } from "@opsnerve/types";
+import { AgeGroup, SessionType } from "@/types";
 import { ageGroupLabel, sessionTypeLabel } from "@/lib/format";
 
 export function SessionFilters() {

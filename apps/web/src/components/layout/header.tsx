@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
-import type { User } from "@opsnerve/types";
+import type { User } from "@/types";
 
 export function Header({ user }: { user: User }) {
   const router = useRouter();

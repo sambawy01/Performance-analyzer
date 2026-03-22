@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { createClient } from "@/lib/supabase/client";
-import { AgeGroup, SessionType, Location } from "@opsnerve/types";
+import { AgeGroup, SessionType, Location } from "@/types";
 import { ageGroupLabel, sessionTypeLabel } from "@/lib/format";
 import { Plus } from "lucide-react";
 

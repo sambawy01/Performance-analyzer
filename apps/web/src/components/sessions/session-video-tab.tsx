@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { VideoTagType } from "@opsnerve/types";
+import { VideoTagType } from "@/types";
 import { createClient } from "@/lib/supabase/client";
 import {
   Video,

@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ageGroupLabel, formatDate, riskFlagBadgeVariant } from "@/lib/format";
-import type { Player } from "@opsnerve/types";
+import type { Player } from "@/types";
 
 interface PlayerOverviewProps {
   player: Player;

@@ -8,7 +8,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ageGroupLabel } from "@/lib/format";
-import type { Player } from "@opsnerve/types";
+import type { Player } from "@/types";
 
 export function PlayerCard({ player }: { player: Player }) {
   const initials = player.name

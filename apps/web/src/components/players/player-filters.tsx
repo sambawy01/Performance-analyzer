@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AgeGroup, PlayerPosition, PlayerStatus } from "@opsnerve/types";
+import { AgeGroup, PlayerPosition, PlayerStatus } from "@/types";
 import { ageGroupLabel } from "@/lib/format";
 
 export function PlayerFilters() {
