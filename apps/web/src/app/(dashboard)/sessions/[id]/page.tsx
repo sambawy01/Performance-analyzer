@@ -31,12 +31,28 @@ export default async function SessionDetailPage({
     getSessionLoadRecords(id),
   ]);
 
-  // Fetch tactical data separately
-  const { data: tactical } = await supabase
-    .from("tactical_metrics")
-    .select("*")
-    .eq("session_id", id)
-    .single();
+  // Fetch tactical data + history for comparison
+  const [{ data: tactical }, { data: tacticalHistory }] = await Promise.all([
+    supabase.from("tactical_metrics").select("*").eq("session_id", id).single(),
+    supabase.from("tactical_metrics")
+      .select("session_id, avg_formation, compactness_avg, pressing_intensity, possession_pct, transition_speed_atk_s, transition_speed_def_s, sessions!inner(date, type)")
+      .neq("session_id", id)
+      .order("sessions(date)", { ascending: false })
+      .limit(10),
+  ]);
+
+  // Flatten tactical history with session dates
+  const tactHistory = (tacticalHistory ?? []).map((t: any) => ({
+    session_id: t.session_id,
+    date: t.sessions?.date ?? "",
+    type: t.sessions?.type ?? "",
+    pressing_intensity: t.pressing_intensity,
+    possession_pct: t.possession_pct,
+    compactness_avg: t.compactness_avg,
+    transition_speed_atk_s: t.transition_speed_atk_s,
+    transition_speed_def_s: t.transition_speed_def_s,
+    avg_formation: t.avg_formation,
+  }));
 
 
   if (!session) {
@@ -102,7 +118,7 @@ export default async function SessionDetailPage({
         </TabsContent>
 
         <TabsContent value="tactical">
-          <SessionTacticalTab tactical={tactical as any} />
+          <SessionTacticalTab tactical={tactical as any} history={tactHistory} />
         </TabsContent>
 
         <TabsContent value="video">
