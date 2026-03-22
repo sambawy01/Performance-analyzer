@@ -44,6 +44,17 @@ interface OverviewTabProps {
     hr_recovery_60s: number | null;
     players?: { name: string; jersey_number: number; position: string };
   }>;
+  cvMetrics: Array<{
+    total_distance_m: number;
+    max_speed_kmh: number;
+    sprint_count: number;
+    sprint_distance_m: number;
+    high_speed_run_count: number;
+    accel_events: number;
+    decel_events: number;
+    off_ball_movement_score: number | null;
+    players?: { name: string; jersey_number: number; position: string };
+  }>;
   loadRecords: Array<{
     risk_flag: string;
     acwr_ratio: number;
@@ -88,9 +99,11 @@ function StatCard({
 export function SessionOverviewTab({
   session,
   metrics,
+  cvMetrics,
   loadRecords,
 }: OverviewTabProps) {
   const hasData = metrics.length > 0;
+  const hasCvData = cvMetrics.length > 0;
 
   const avgHr = hasData
     ? Math.round(metrics.reduce((s, m) => s + m.hr_avg, 0) / metrics.length)
@@ -104,6 +117,29 @@ export function SessionOverviewTab({
     : null;
   const totalTrimp = hasData
     ? Math.round(metrics.reduce((s, m) => s + m.trimp_score, 0))
+    : null;
+
+  // CV metrics aggregates
+  const avgDistance = hasCvData
+    ? Math.round(cvMetrics.reduce((s, m) => s + m.total_distance_m, 0) / cvMetrics.length)
+    : null;
+  const avgMaxSpeed = hasCvData
+    ? (cvMetrics.reduce((s, m) => s + m.max_speed_kmh, 0) / cvMetrics.length).toFixed(1)
+    : null;
+  const avgSprints = hasCvData
+    ? Math.round(cvMetrics.reduce((s, m) => s + m.sprint_count, 0) / cvMetrics.length)
+    : null;
+  const totalSprints = hasCvData
+    ? cvMetrics.reduce((s, m) => s + m.sprint_count, 0)
+    : null;
+  const avgHSR = hasCvData
+    ? Math.round(cvMetrics.reduce((s, m) => s + m.high_speed_run_count, 0) / cvMetrics.length)
+    : null;
+  const avgAccel = hasCvData
+    ? Math.round(cvMetrics.reduce((s, m) => s + m.accel_events, 0) / cvMetrics.length)
+    : null;
+  const avgDecel = hasCvData
+    ? Math.round(cvMetrics.reduce((s, m) => s + m.decel_events, 0) / cvMetrics.length)
     : null;
 
   const redFlags = loadRecords.filter((r) => r.risk_flag === "red");
@@ -317,6 +353,62 @@ export function SessionOverviewTab({
           }
         />
       </div>
+
+      {/* Physical Performance Metrics (from CV Pipeline) */}
+      {hasCvData && (
+        <div>
+          <h3 className="text-sm font-semibold text-white/80 mb-3 uppercase tracking-wider">Physical Performance — Video Tracking</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+            <StatCard
+              icon={Activity}
+              label="Avg Distance"
+              value={avgDistance ? `${(avgDistance / 1000).toFixed(1)} km` : "--"}
+              color="text-[#00d4ff]"
+            />
+            <StatCard
+              icon={Zap}
+              label="Top Speed"
+              value={avgMaxSpeed ? `${avgMaxSpeed} km/h` : "--"}
+              color="text-[#00ff88]"
+            />
+            <StatCard
+              icon={Zap}
+              label="Avg Sprints"
+              value={avgSprints ?? "--"}
+              subtitle={totalSprints ? `${totalSprints} total` : undefined}
+              color="text-[#ff6b35]"
+            />
+            <StatCard
+              icon={TrendingUp}
+              label="High Speed Runs"
+              value={avgHSR ?? "--"}
+              subtitle=">15 km/h"
+              color="text-[#a855f7]"
+            />
+            <StatCard
+              icon={TrendingUp}
+              label="Accelerations"
+              value={avgAccel ?? "--"}
+              subtitle=">2.5 m/s²"
+              color="text-[#00d4ff]"
+            />
+            <StatCard
+              icon={AlertTriangle}
+              label="Decelerations"
+              value={avgDecel ?? "--"}
+              subtitle="Injury predictor"
+              color="text-[#ff3355]"
+            />
+            <StatCard
+              icon={Users}
+              label="Movement Score"
+              value={hasCvData ? Math.round(cvMetrics.reduce((s, m) => s + (m.off_ball_movement_score ?? 0), 0) / cvMetrics.length) : "--"}
+              subtitle="Off-ball quality"
+              color="text-[#00ff88]"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Two-column: Zone Distribution + Top Performers */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

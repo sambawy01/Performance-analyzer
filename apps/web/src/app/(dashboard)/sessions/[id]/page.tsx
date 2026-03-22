@@ -31,6 +31,12 @@ export default async function SessionDetailPage({
     getSessionLoadRecords(id),
   ]);
 
+  // Fetch CV metrics for this session
+  const { data: cvMetrics } = await supabase
+    .from("cv_metrics")
+    .select("*, players(name, jersey_number, position)")
+    .eq("session_id", id);
+
   // Fetch tactical data + history for comparison
   const [{ data: tactical }, { data: tacticalHistory }] = await Promise.all([
     supabase.from("tactical_metrics").select("*").eq("session_id", id).single(),
@@ -106,6 +112,7 @@ export default async function SessionDetailPage({
           <SessionOverviewTab
             session={session}
             metrics={(session.wearable_metrics as any[]) ?? []}
+            cvMetrics={(cvMetrics as any[]) ?? []}
             loadRecords={loadRecords as any}
           />
         </TabsContent>
