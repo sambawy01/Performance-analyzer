@@ -5,6 +5,7 @@ import { RiskDonutWrapper } from "@/components/dashboard/risk-donut-wrapper";
 import { RecentSessionsTable } from "@/components/dashboard/recent-sessions-table";
 import { AlertPanel } from "@/components/dashboard/alert-panel";
 import { SessionSummaryCard } from "@/components/dashboard/session-summary-card";
+import { DailyBriefing } from "@/components/planner/daily-briefing";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -159,6 +160,45 @@ export default async function DashboardPage() {
     }
   }
 
+  // Today's session for Daily Briefing
+  const todayStr = new Date().toISOString().split("T")[0];
+  const { data: todaySessions } = await supabase
+    .from("sessions")
+    .select("*")
+    .eq("academy_id", profile.academy_id)
+    .eq("date", todayStr)
+    .limit(1);
+
+  const todaySession = todaySessions?.[0] ?? null;
+
+  // Build players at risk list for Daily Briefing
+  const seenRiskPlayers = new Set<string>();
+  const briefingPlayersAtRisk: Array<{
+    jerseyNumber: number;
+    name: string;
+    acwr: number;
+    riskFlag: string;
+  }> = [];
+
+  for (const a of alerts) {
+    const alert = a as any;
+    if (!seenRiskPlayers.has(alert.player_id)) {
+      seenRiskPlayers.add(alert.player_id);
+      briefingPlayersAtRisk.push({
+        jerseyNumber: alert.players.jersey_number,
+        name: alert.players.name,
+        acwr: alert.acwr_ratio ?? 0,
+        riskFlag: alert.risk_flag,
+      });
+    }
+  }
+
+  // Team readiness — simple heuristic: 100 - (risk players * 10), min 30
+  const teamReadiness = Math.max(
+    30,
+    100 - briefingPlayersAtRisk.length * 10
+  );
+
   // Chart data: daily candlestick (merge multiple sessions per day, fill all 14 days)
   // 1. Group all metrics by date
   const dailyMap = new Map<string, any[]>();
@@ -213,6 +253,13 @@ export default async function DashboardPage() {
         avgTeamHR={avgTeamHR}
         playersAtRisk={playersAtRisk}
         avgTrimp={avgTrimp}
+      />
+
+      {/* Daily Briefing */}
+      <DailyBriefing
+        todaySession={todaySession}
+        playersAtRisk={briefingPlayersAtRisk}
+        teamReadiness={teamReadiness}
       />
 
       {/* Row 2: Charts - Session Intensity + Risk Distribution */}
