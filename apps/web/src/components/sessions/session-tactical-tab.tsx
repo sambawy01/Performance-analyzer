@@ -198,7 +198,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-white/70 leading-relaxed italic">
+              <p className="text-base text-white/80 leading-relaxed">
                 {getPossessionAnalysis(tactical.possession_pct, "training")}
               </p>
             </CardContent>
@@ -230,7 +230,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                 {pressingInfo.label}
               </Badge>
             </div>
-            <p className="text-xs text-white/70 leading-relaxed italic mb-3">{pressingInfo.analysis}</p>
+            <p className="text-base text-white/80 leading-relaxed mb-3">{pressingInfo.analysis}</p>
             {pressingTrend && (
               <p className="text-xs text-white/60">{pressingTrend.insight}</p>
             )}
@@ -278,7 +278,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                   </div>
                 )}
               </div>
-              <p className="text-xs text-white/70 leading-relaxed italic">
+              <p className="text-base text-white/80 leading-relaxed">
                 {getCompactnessAnalysis(tactical.compactness_avg, tactical.compactness_std)}
               </p>
             </CardContent>
@@ -315,7 +315,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                   </div>
                 </div>
               </div>
-              <p className="text-xs text-white/70 leading-relaxed italic">
+              <p className="text-base text-white/80 leading-relaxed">
                 {getTransitionAnalysis(tactical.transition_speed_atk_s, tactical.transition_speed_def_s)}
               </p>
             </CardContent>

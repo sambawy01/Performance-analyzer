@@ -217,7 +217,7 @@ export function SessionOverviewTab({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm leading-relaxed">
+          <p className="text-base leading-relaxed">
             {session.type === "match"
               ? `Match session with ${metrics.length} players tracked. `
               : `Training session with ${metrics.length} players tracked. `}
