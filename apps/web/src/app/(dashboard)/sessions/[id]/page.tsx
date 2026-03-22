@@ -104,7 +104,7 @@ export default async function SessionDetailPage({
         </TabsContent>
 
         <TabsContent value="ai-report">
-          <SessionAiReportTab />
+          <SessionAiReportTab sessionId={id} />
         </TabsContent>
       </Tabs>
     </div>

@@ -159,29 +159,40 @@ export default async function DashboardPage() {
     }
   }
 
-  // Chart data: aggregate per-session averages
-  const chartData = trendData.map((s) => {
-    const wm = s.wearable_metrics ?? [];
-    const avgHr =
-      wm.length > 0
-        ? Math.round(wm.reduce((sum: number, m: any) => sum + m.hr_avg, 0) / wm.length)
-        : 0;
-    const avgTr =
-      wm.length > 0
-        ? Math.round(
-            wm.reduce((sum: number, m: any) => sum + m.trimp_score, 0) /
-              wm.length
-          )
-        : 0;
-    return {
-      date: new Date(s.date).toLocaleDateString("en-GB", {
-        day: "numeric",
-        month: "short",
-      }),
-      avgHr,
-      avgTrimp: avgTr,
-    };
-  });
+  // Chart data: daily candlestick (merge multiple sessions per day, fill all 14 days)
+  // 1. Group all metrics by date
+  const dailyMap = new Map<string, any[]>();
+  for (const s of trendData) {
+    const dateKey = s.date; // YYYY-MM-DD
+    const existing = dailyMap.get(dateKey) ?? [];
+    existing.push(...(s.wearable_metrics ?? []));
+    dailyMap.set(dateKey, existing);
+  }
+
+  // 2. Generate all 14 days
+  const chartData = [];
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateKey = d.toISOString().split("T")[0];
+    const label = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const wm = dailyMap.get(dateKey) ?? [];
+
+    if (wm.length === 0) {
+      chartData.push({ date: label, avgHr: 0, hrLow: 0, hrHigh: 0, avgTrimp: 0, trimpLow: 0, trimpHigh: 0, players: 0 });
+    } else {
+      chartData.push({
+        date: label,
+        avgHr: Math.round(wm.reduce((s: number, m: any) => s + m.hr_avg, 0) / wm.length),
+        hrLow: Math.round(Math.min(...wm.map((m: any) => m.hr_avg))),
+        hrHigh: Math.round(Math.max(...wm.map((m: any) => m.hr_max))),
+        avgTrimp: Math.round(wm.reduce((s: number, m: any) => s + m.trimp_score, 0) / wm.length),
+        trimpLow: Math.round(Math.min(...wm.map((m: any) => m.trimp_score))),
+        trimpHigh: Math.round(Math.max(...wm.map((m: any) => m.trimp_score))),
+        players: wm.length,
+      });
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -208,14 +219,29 @@ export default async function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="rounded-xl border bg-card shadow-sm p-4">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold">Session Intensity</h3>
-            <div className="flex gap-3 text-xs text-muted-foreground">
+            <div>
+              <h3 className="text-sm font-semibold">Session Intensity</h3>
+              <p className="text-[11px] text-muted-foreground mt-0.5">HR range per session (candlestick) + TRIMP trend</p>
+            </div>
+            <div className="flex gap-3 text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-blue-500 inline-block" />
-                Avg HR
+                <span className="h-2 w-2 rounded bg-green-500 inline-block" />
+                Low
               </span>
               <span className="flex items-center gap-1">
-                <span className="h-2 w-2 rounded-full bg-orange-500 inline-block" />
+                <span className="h-2 w-2 rounded bg-blue-500 inline-block" />
+                Moderate
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded bg-orange-500 inline-block" />
+                High
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-2 rounded bg-red-500 inline-block" />
+                Extreme
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="h-2 w-6 border-t-2 border-dashed border-orange-500 inline-block" />
                 TRIMP
               </span>
             </div>

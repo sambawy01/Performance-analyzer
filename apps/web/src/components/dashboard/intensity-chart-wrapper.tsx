@@ -16,7 +16,12 @@ interface IntensityChartWrapperProps {
   data: Array<{
     date: string;
     avgHr: number;
+    hrLow: number;
+    hrHigh: number;
     avgTrimp: number;
+    trimpLow: number;
+    trimpHigh: number;
+    players: number;
   }>;
 }
 

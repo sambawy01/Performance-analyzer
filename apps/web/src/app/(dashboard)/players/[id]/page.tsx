@@ -11,7 +11,7 @@ import { PlayerOverview } from "@/components/players/player-overview";
 import { PlayerPhysicalTrends } from "@/components/players/player-physical-trends";
 import { PlayerSessionHistory } from "@/components/players/player-session-history";
 import { PlayerLoadChart } from "@/components/players/player-load-chart";
-import { PlayerDevelopment } from "@/components/players/player-development";
+import { AiSummaryBlock } from "@/components/ai/ai-summary-block";
 
 interface PlayerProfilePageProps {
   params: Promise<{ id: string }>;
@@ -32,7 +32,6 @@ export default async function PlayerProfilePage({
     notFound();
   }
 
-  // Count sessions in last 28 days
   const twentyEightDaysAgo = new Date();
   twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
   const recentSessionCount = sessionMetrics.filter(
@@ -57,12 +56,19 @@ export default async function PlayerProfilePage({
         sessionCount={recentSessionCount}
       />
 
+      {/* AI Development Summary */}
+      <AiSummaryBlock
+        title="AI Development Summary"
+        apiEndpoint="/api/ai/player-summary"
+        requestBody={{ playerId: id }}
+        placeholder="Click 'Generate Analysis' to get an AI-powered development summary analyzing this player's physical form, load management, strengths, and coaching recommendations based on their recent data."
+      />
+
       <Tabs defaultValue="physical">
         <TabsList>
           <TabsTrigger value="physical">Physical Trends</TabsTrigger>
           <TabsTrigger value="load">Load Management</TabsTrigger>
           <TabsTrigger value="history">Session History</TabsTrigger>
-          <TabsTrigger value="development">Development</TabsTrigger>
         </TabsList>
 
         <TabsContent value="physical" className="mt-4">
@@ -75,10 +81,6 @@ export default async function PlayerProfilePage({
 
         <TabsContent value="history" className="mt-4">
           <PlayerSessionHistory metrics={sessionMetrics as any} />
-        </TabsContent>
-
-        <TabsContent value="development" className="mt-4">
-          <PlayerDevelopment />
         </TabsContent>
       </Tabs>
     </div>

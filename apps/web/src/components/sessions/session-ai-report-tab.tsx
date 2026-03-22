@@ -1,29 +1,14 @@
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+"use client";
 
-export function SessionAiReportTab() {
+import { AiSummaryBlock } from "@/components/ai/ai-summary-block";
+
+export function SessionAiReportTab({ sessionId }: { sessionId: string }) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>AI Session Report</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center justify-center py-12 text-center">
-          <p className="text-muted-foreground mb-4">
-            AI-generated session report including narrative, top performers,
-            areas of concern, and recommendations.
-          </p>
-          <Button disabled>Generate Report</Button>
-          <p className="text-xs text-muted-foreground mt-2">
-            Available once the AI layer is connected.
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+    <AiSummaryBlock
+      title="AI Session Report"
+      apiEndpoint="/api/ai/session-summary"
+      requestBody={{ sessionId }}
+      placeholder="Click 'Generate Analysis' to create an AI-powered session report analyzing team intensity, individual performance, load alerts, and coaching recommendations."
+    />
   );
 }
