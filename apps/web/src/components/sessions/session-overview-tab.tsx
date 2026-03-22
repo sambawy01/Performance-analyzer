@@ -1,30 +1,83 @@
+"use client";
+
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
+  CardDescription,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Activity,
+  Heart,
+  TrendingUp,
+  Users,
+  Clock,
+  AlertTriangle,
+  Zap,
+  Brain,
+  FileText,
+} from "lucide-react";
+import { HR_ZONE_COLORS, HR_ZONE_LABELS } from "@/lib/hr-zones";
+import type { HrZone } from "@/lib/hr-zones";
 
 interface OverviewTabProps {
   session: {
     notes: string | null;
     duration_minutes: number | null;
+    type: string;
+    date: string;
+    age_group: string;
   };
   metrics: Array<{
     hr_avg: number;
     hr_max: number;
+    hr_min: number;
     trimp_score: number;
     hr_zone_1_pct: number;
     hr_zone_2_pct: number;
     hr_zone_3_pct: number;
     hr_zone_4_pct: number;
     hr_zone_5_pct: number;
+    hr_recovery_60s: number | null;
+    players?: { name: string; jersey_number: number; position: string };
   }>;
   loadRecords: Array<{
     risk_flag: string;
     acwr_ratio: number;
+    player_id: string;
     players: { name: string; jersey_number: number };
   }>;
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  subtitle,
+  color,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  subtitle?: string;
+  color?: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="pt-4 pb-3">
+        <div className="flex items-center gap-2 mb-1">
+          <Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} />
+          <p className="text-xs text-muted-foreground">{label}</p>
+        </div>
+        <p className="text-2xl font-bold">{value}</p>
+        {subtitle && (
+          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 export function SessionOverviewTab({
@@ -32,72 +85,394 @@ export function SessionOverviewTab({
   metrics,
   loadRecords,
 }: OverviewTabProps) {
-  const avgHr =
-    metrics.length > 0
-      ? Math.round(metrics.reduce((s, m) => s + m.hr_avg, 0) / metrics.length)
-      : null;
-  const maxHr =
-    metrics.length > 0 ? Math.max(...metrics.map((m) => m.hr_max)) : null;
-  const avgTrimp =
-    metrics.length > 0
+  const hasData = metrics.length > 0;
+
+  const avgHr = hasData
+    ? Math.round(metrics.reduce((s, m) => s + m.hr_avg, 0) / metrics.length)
+    : null;
+  const maxHr = hasData ? Math.max(...metrics.map((m) => m.hr_max)) : null;
+  const minHr = hasData ? Math.min(...metrics.map((m) => m.hr_min)) : null;
+  const avgTrimp = hasData
+    ? Math.round(
+        metrics.reduce((s, m) => s + m.trimp_score, 0) / metrics.length
+      )
+    : null;
+  const totalTrimp = hasData
+    ? Math.round(metrics.reduce((s, m) => s + m.trimp_score, 0))
+    : null;
+
+  const redFlags = loadRecords.filter((r) => r.risk_flag === "red");
+  const amberFlags = loadRecords.filter((r) => r.risk_flag === "amber");
+
+  // Average zone distribution across all players
+  const avgZones = hasData
+    ? {
+        z1: Math.round(
+          metrics.reduce((s, m) => s + m.hr_zone_1_pct, 0) / metrics.length
+        ),
+        z2: Math.round(
+          metrics.reduce((s, m) => s + m.hr_zone_2_pct, 0) / metrics.length
+        ),
+        z3: Math.round(
+          metrics.reduce((s, m) => s + m.hr_zone_3_pct, 0) / metrics.length
+        ),
+        z4: Math.round(
+          metrics.reduce((s, m) => s + m.hr_zone_4_pct, 0) / metrics.length
+        ),
+        z5: Math.round(
+          metrics.reduce((s, m) => s + m.hr_zone_5_pct, 0) / metrics.length
+        ),
+      }
+    : null;
+
+  // Top performers by TRIMP
+  const topPerformers = hasData
+    ? [...metrics]
+        .sort((a, b) => b.trimp_score - a.trimp_score)
+        .slice(0, 3)
+    : [];
+
+  // Avg recovery
+  const recoveryMetrics = metrics.filter((m) => m.hr_recovery_60s !== null);
+  const avgRecovery =
+    recoveryMetrics.length > 0
       ? Math.round(
-          metrics.reduce((s, m) => s + m.trimp_score, 0) / metrics.length
+          recoveryMetrics.reduce((s, m) => s + (m.hr_recovery_60s ?? 0), 0) /
+            recoveryMetrics.length
         )
       : null;
 
-  const redFlags = loadRecords.filter((r) => r.risk_flag === "red").length;
-  const amberFlags = loadRecords.filter((r) => r.risk_flag === "amber").length;
+  // Session intensity classification
+  const intensityLabel = avgTrimp
+    ? avgTrimp > 200
+      ? "Very High"
+      : avgTrimp > 150
+        ? "High"
+        : avgTrimp > 100
+          ? "Moderate"
+          : avgTrimp > 50
+            ? "Low"
+            : "Very Low"
+    : null;
 
-  const statCards = [
-    { label: "Avg HR", value: avgHr ? `${avgHr} bpm` : "--" },
-    { label: "Max HR", value: maxHr ? `${maxHr} bpm` : "--" },
-    { label: "Avg TRIMP", value: avgTrimp ?? "--" },
-    { label: "Players Tracked", value: metrics.length },
-    {
-      label: "Duration",
-      value: session.duration_minutes
-        ? `${session.duration_minutes} min`
-        : "--",
-    },
-    {
-      label: "Injury Flags",
-      value: `${redFlags} red, ${amberFlags} amber`,
-    },
-  ];
+  const intensityColor = avgTrimp
+    ? avgTrimp > 200
+      ? "text-red-500"
+      : avgTrimp > 150
+        ? "text-orange-500"
+        : avgTrimp > 100
+          ? "text-yellow-500"
+          : "text-green-500"
+    : "";
+
+  if (!hasData) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="py-12">
+            <div className="flex flex-col items-center text-center">
+              <div className="rounded-full bg-muted p-4 mb-4">
+                <Activity className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold mb-1">No wearable data yet</h3>
+              <p className="text-sm text-muted-foreground max-w-md">
+                This session doesn&apos;t have any heart rate data attached. Data will
+                appear here once players wear their chest straps during the
+                session.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {session.notes && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-base">
+                <FileText className="h-4 w-4" />
+                Coach Notes
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm">{session.notes}</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {/* AI Summary Placeholder */}
+      {/* AI Summary */}
       <Card>
         <CardHeader>
-          <CardTitle>AI Session Summary</CardTitle>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Brain className="h-4 w-4 text-violet-500" />
+            Session Analysis
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground italic">
-            AI-generated session summary will appear here once the AI layer is
-            connected. It will analyze HR data, load patterns, and coach notes
-            to produce a 2-3 sentence summary.
+          <p className="text-sm leading-relaxed">
+            {session.type === "match"
+              ? `Match session with ${metrics.length} players tracked. `
+              : `Training session with ${metrics.length} players tracked. `}
+            {intensityLabel && (
+              <span>
+                Overall intensity was{" "}
+                <span className={`font-semibold ${intensityColor}`}>
+                  {intensityLabel.toLowerCase()}
+                </span>{" "}
+                (avg TRIMP: {avgTrimp}).{" "}
+              </span>
+            )}
+            {avgZones && avgZones.z5 > 15
+              ? `Players spent an average of ${avgZones.z5}% of time in the anaerobic zone (Z5) — high-intensity session. `
+              : avgZones && avgZones.z4 + avgZones.z5 > 30
+                ? `Good mix of threshold and high-intensity work — ${avgZones.z4 + avgZones.z5}% of time in Z4/Z5. `
+                : `Predominantly aerobic session — most time spent in zones 2-3. `}
+            {redFlags.length > 0
+              ? `${redFlags.length} player${redFlags.length > 1 ? "s" : ""} flagged for injury risk — monitor closely.`
+              : amberFlags.length > 0
+                ? `${amberFlags.length} player${amberFlags.length > 1 ? "s" : ""} in the caution zone for load management.`
+                : "No injury risk flags from this session."}
           </p>
+          <div className="flex items-center gap-1.5 mt-3">
+            <Brain className="h-3 w-3 text-violet-400" />
+            <span className="text-[10px] text-violet-400">
+              Auto-generated analysis — will use Claude AI when connected
+            </span>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Key Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {statCards.map((stat) => (
-          <Card key={stat.label} size="sm">
-            <CardContent className="pt-4">
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-              <p className="text-xl font-bold">{stat.value}</p>
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <StatCard
+          icon={Heart}
+          label="Avg Heart Rate"
+          value={`${avgHr} bpm`}
+          color="text-red-500"
+        />
+        <StatCard
+          icon={TrendingUp}
+          label="Peak HR"
+          value={`${maxHr} bpm`}
+          subtitle={`Low: ${minHr} bpm`}
+          color="text-orange-500"
+        />
+        <StatCard
+          icon={Zap}
+          label="Avg TRIMP"
+          value={avgTrimp ?? "--"}
+          subtitle={intensityLabel ?? undefined}
+          color={intensityColor || "text-muted-foreground"}
+        />
+        <StatCard
+          icon={Users}
+          label="Players Tracked"
+          value={metrics.length}
+          color="text-blue-500"
+        />
+        <StatCard
+          icon={Clock}
+          label="Duration"
+          value={
+            session.duration_minutes
+              ? `${session.duration_minutes} min`
+              : "--"
+          }
+          color="text-muted-foreground"
+        />
+        <StatCard
+          icon={AlertTriangle}
+          label="Risk Flags"
+          value={
+            redFlags.length + amberFlags.length === 0
+              ? "None"
+              : `${redFlags.length + amberFlags.length}`
+          }
+          subtitle={
+            redFlags.length > 0
+              ? `${redFlags.length} red, ${amberFlags.length} amber`
+              : amberFlags.length > 0
+                ? `${amberFlags.length} caution`
+                : "All clear"
+          }
+          color={
+            redFlags.length > 0
+              ? "text-red-500"
+              : amberFlags.length > 0
+                ? "text-amber-500"
+                : "text-green-500"
+          }
+        />
+      </div>
+
+      {/* Two-column: Zone Distribution + Top Performers */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Team Zone Distribution */}
+        {avgZones && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Team HR Zone Distribution
+              </CardTitle>
+              <CardDescription>
+                Average time spent in each zone across all players
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {(
+                  [
+                    { zone: 1 as HrZone, pct: avgZones.z1 },
+                    { zone: 2 as HrZone, pct: avgZones.z2 },
+                    { zone: 3 as HrZone, pct: avgZones.z3 },
+                    { zone: 4 as HrZone, pct: avgZones.z4 },
+                    { zone: 5 as HrZone, pct: avgZones.z5 },
+                  ] as const
+                ).map(({ zone, pct }) => (
+                  <div key={zone} className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 w-24">
+                      <div
+                        className="h-3 w-3 rounded-full shrink-0"
+                        style={{ backgroundColor: HR_ZONE_COLORS[zone] }}
+                      />
+                      <span className="text-xs font-medium">
+                        {HR_ZONE_LABELS[zone]}
+                      </span>
+                    </div>
+                    <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all"
+                        style={{
+                          width: `${Math.min(pct, 100)}%`,
+                          backgroundColor: HR_ZONE_COLORS[zone],
+                        }}
+                      />
+                    </div>
+                    <span className="text-sm font-semibold w-10 text-right">
+                      {pct}%
+                    </span>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
-        ))}
+        )}
+
+        {/* Top Performers + Risk Flags */}
+        <div className="space-y-4">
+          {topPerformers.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Top Performers</CardTitle>
+                <CardDescription>Highest training load (TRIMP)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {topPerformers.map((m, i) => (
+                    <div
+                      key={m.players?.jersey_number ?? i}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`text-lg font-bold ${i === 0 ? "text-amber-500" : i === 1 ? "text-gray-400" : "text-amber-700"}`}
+                        >
+                          {i + 1}
+                        </span>
+                        <div>
+                          <p className="text-sm font-medium">
+                            #{m.players?.jersey_number} {m.players?.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {m.players?.position} — HR avg {m.hr_avg} bpm
+                          </p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary">
+                        TRIMP {Math.round(m.trimp_score)}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Risk flags summary */}
+          {(redFlags.length > 0 || amberFlags.length > 0) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <AlertTriangle className="h-4 w-4 text-red-500" />
+                  Load Alerts
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {[...redFlags, ...amberFlags].slice(0, 5).map((r) => (
+                    <div
+                      key={r.player_id}
+                      className={`flex items-center justify-between p-2 rounded text-sm ${r.risk_flag === "red" ? "bg-red-50" : "bg-amber-50"}`}
+                    >
+                      <span className="font-medium">
+                        #{r.players.jersey_number} {r.players.name}
+                      </span>
+                      <Badge
+                        variant={
+                          r.risk_flag === "red" ? "destructive" : "default"
+                        }
+                        className={
+                          r.risk_flag === "amber"
+                            ? "bg-amber-500 hover:bg-amber-600"
+                            : ""
+                        }
+                      >
+                        ACWR {r.acwr_ratio}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recovery */}
+          {avgRecovery !== null && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">
+                  Team Recovery
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-2xl font-bold">{avgRecovery} bpm</p>
+                <p className="text-xs text-muted-foreground">
+                  Average HR drop in first 60 seconds post-session
+                </p>
+                <p className="text-xs mt-1">
+                  {avgRecovery > 30
+                    ? "Excellent recovery — team is well conditioned"
+                    : avgRecovery > 20
+                      ? "Good recovery — within normal range"
+                      : "Below average — consider monitoring fatigue levels"}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
 
       {/* Coach Notes */}
       {session.notes && (
         <Card>
           <CardHeader>
-            <CardTitle>Coach Notes</CardTitle>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <FileText className="h-4 w-4" />
+              Coach Notes
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <p className="text-sm">{session.notes}</p>

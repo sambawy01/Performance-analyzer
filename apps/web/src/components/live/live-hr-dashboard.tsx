@@ -8,9 +8,11 @@ import {
 } from "@/lib/queries/live";
 import { PlayerHrBar } from "./player-hr-bar";
 import { FatigueAlertPanel } from "./fatigue-alerts";
+import { LiveVideoPlayer } from "./live-video-player";
 import { estimateHrMax, getHrZone } from "@/lib/hr-zones";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Radio, Users, Heart } from "lucide-react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface PlayerLiveState {
@@ -26,9 +28,15 @@ interface PlayerLiveState {
 
 interface LiveHrDashboardProps {
   sessionId: string;
+  streamUrl?: string | null;
+  veoShareUrl?: string | null;
 }
 
-export function LiveHrDashboard({ sessionId }: LiveHrDashboardProps) {
+export function LiveHrDashboard({
+  sessionId,
+  streamUrl,
+  veoShareUrl,
+}: LiveHrDashboardProps) {
   const [players, setPlayers] = useState<Map<string, PlayerLiveState>>(
     new Map()
   );
@@ -77,7 +85,7 @@ export function LiveHrDashboard({ sessionId }: LiveHrDashboardProps) {
     loadInitial();
   }, [sessionId]);
 
-  // Subscribe to realtime updates — unsubscribe on unmount
+  // Subscribe to realtime updates
   useEffect(() => {
     const channel = subscribeToLiveHr(sessionId, (payload) => {
       setPlayers((prev) => {
@@ -136,59 +144,101 @@ export function LiveHrDashboard({ sessionId }: LiveHrDashboardProps) {
       currentHr: p.currentHr,
     }));
 
+  // Team stats
+  const avgHr =
+    playerArray.length > 0
+      ? Math.round(
+          playerArray.reduce((s, p) => s + p.currentHr, 0) /
+            playerArray.filter((p) => p.currentHr > 0).length || 0
+        )
+      : 0;
+
+  const zone5Count = playerArray.filter(
+    (p) => p.currentHr > 0 && getHrZone(p.currentHr, p.hrMax) === 5
+  ).length;
+
   return (
     <div className="space-y-4">
-      {/* Connection status bar */}
+      {/* Status bar */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-2 w-2 rounded-full ${
-              connected ? "bg-green-500 animate-pulse" : "bg-gray-400"
-            }`}
-          />
-          <span className="text-sm text-muted-foreground">
-            {connected ? "Connected" : "Waiting for data..."}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${
+                connected ? "bg-green-500 animate-pulse" : "bg-gray-400"
+              }`}
+            />
+            <span className="text-sm font-medium">
+              {connected ? "Live" : "Waiting for data..."}
+            </span>
+          </div>
           {lastUpdate && (
             <span className="text-xs text-muted-foreground">
-              Last update: {lastUpdate.toLocaleTimeString()}
+              Last: {lastUpdate.toLocaleTimeString()}
             </span>
           )}
         </div>
-        <Badge variant="outline">{playerArray.length} players</Badge>
+        <div className="flex items-center gap-3">
+          {avgHr > 0 && (
+            <div className="flex items-center gap-1.5">
+              <Heart className="h-3.5 w-3.5 text-red-500" />
+              <span className="text-sm font-medium">Team avg: {avgHr} bpm</span>
+            </div>
+          )}
+          {zone5Count > 0 && (
+            <Badge variant="destructive">{zone5Count} in Z5</Badge>
+          )}
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Users className="h-3 w-3" />
+            {playerArray.length}
+          </Badge>
+        </div>
       </div>
 
-      {/* Fatigue alerts */}
+      {/* Fatigue alerts — always visible at top */}
       <FatigueAlertPanel alerts={fatigueAlerts} />
 
-      {/* Player HR bars */}
-      {playerArray.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No active wearable sessions. Start the mock data seeder or connect
-              ESP32 nodes to see live HR data.
-            </p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Run the <code>mock-hr-stream</code> Edge Function to simulate data.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {playerArray.map((p) => (
-            <PlayerHrBar
-              key={p.playerId}
-              name={p.playerName}
-              jerseyNumber={p.jerseyNumber}
-              position={p.position}
-              currentHr={p.currentHr}
-              hrMax={p.hrMax}
-              timeInZone5Seconds={p.zone5AccumulatedSeconds}
-            />
-          ))}
+      {/* Main layout: Video (left) + HR bars (right) */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+        {/* Video panel — takes 3 cols on large screens */}
+        <div className="lg:col-span-3">
+          <LiveVideoPlayer
+            streamUrl={streamUrl}
+            veoShareUrl={veoShareUrl}
+          />
         </div>
-      )}
+
+        {/* HR bars — takes 2 cols, scrollable */}
+        <div className="lg:col-span-2">
+          {playerArray.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Radio className="h-8 w-8 mx-auto mb-3 text-muted-foreground opacity-50" />
+                <p className="text-sm text-muted-foreground">
+                  No active heart rate streams.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Waiting for ESP32 nodes or mock data seeder...
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-2 max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+              {playerArray.map((p) => (
+                <PlayerHrBar
+                  key={p.playerId}
+                  name={p.playerName}
+                  jerseyNumber={p.jerseyNumber}
+                  position={p.position}
+                  currentHr={p.currentHr}
+                  hrMax={p.hrMax}
+                  timeInZone5Seconds={p.zone5AccumulatedSeconds}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getSessionById, getSessionLoadRecords } from "@/lib/queries/sessions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { SessionOverviewTab } from "@/components/sessions/session-overview-tab";
 import { SessionPlayersTab } from "@/components/sessions/session-players-tab";
 import { SessionTacticalTab } from "@/components/sessions/session-tactical-tab";
@@ -15,7 +14,7 @@ import {
 } from "@/lib/format";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
+
 
 interface SessionDetailPageProps {
   params: Promise<{ id: string }>;
@@ -59,7 +58,7 @@ export default async function SessionDetailPage({
         </div>
         <Link
           href={`/live?session=${id}`}
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
         >
           Live HR View
         </Link>

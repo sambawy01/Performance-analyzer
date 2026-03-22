@@ -1,5 +1,4 @@
-[project]
-id = "opsnerve-performance-analyzer"
+project_id = "opsnerve-performance-analyzer"
 
 [api]
 enabled = true
