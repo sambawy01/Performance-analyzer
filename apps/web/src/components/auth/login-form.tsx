@@ -40,10 +40,10 @@ export function LoginForm() {
     <Card className="w-full max-w-sm glow-blue relative z-10">
       <CardHeader>
         <CardTitle className="text-2xl text-gradient tracking-tight">
-          Opsnerve
+          Coach M8
         </CardTitle>
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest">
-          Performance Analyzer
+        <p className="text-[10px] text-white/40 uppercase tracking-widest">
+          AI Performance Analyst
         </p>
       </CardHeader>
       <CardContent>

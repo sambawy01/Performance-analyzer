@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
     // Build full academy data context
     const fullContext = await buildFullContext(profile.academy_id);
 
-    const systemPrompt = `You are Opsnerve AI, an elite football performance analyst embedded in a youth football academy's analytics platform. You're talking to ${profile.name} (${profile.role}).
+    const systemPrompt = `You are Coach M8 AI, an elite football performance analyst embedded in a youth football academy's analytics platform. You're talking to ${profile.name} (${profile.role}).
 
 You have COMPLETE access to the academy's data. You know every player, every session, every HR reading, every load record, and every tactical metric. Use this data to give precise, data-backed answers.
 

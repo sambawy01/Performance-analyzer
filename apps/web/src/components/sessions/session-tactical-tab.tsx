@@ -399,7 +399,7 @@ Reference specific numbers and compare to previous sessions.`
               })}
               <div className="flex items-center gap-1.5 pt-3 border-t border-white/[0.06] mt-3">
                 <Brain className="h-3 w-3 text-[#a855f7]/40" />
-                <span className="text-[10px] text-white/20 italic">AI analysis based on tactical data + session history comparison</span>
+                <span className="text-[10px] text-white/20 italic">Coach M8 AI — tactical analysis based on session data + historical comparison</span>
               </div>
             </div>
           ) : !aiLoading ? (

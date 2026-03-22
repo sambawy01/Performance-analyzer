@@ -15,7 +15,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Opsnerve Performance Analyzer",
+  title: "Coach M8",
   description: "AI-powered football performance analysis",
 };
 

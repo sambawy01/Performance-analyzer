@@ -358,7 +358,7 @@ export function AiReportChat({
             <div className="flex items-center gap-1.5 mt-2">
               <Brain className="h-3 w-3 text-[#a855f7]/40" />
               <span className="text-[10px] text-white/20">
-                Powered by Claude AI — responses based on your academy&apos;s actual data
+                Coach M8 AI — powered by your academy&apos;s live performance data
               </span>
             </div>
           </CardContent>

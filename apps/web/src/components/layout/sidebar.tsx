@@ -48,10 +48,10 @@ export function Sidebar({ role }: { role: string }) {
     <aside className="w-64 border-r border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-4">
       <div className="mb-8">
         <h1 className="text-lg font-bold text-gradient tracking-tight">
-          Opsnerve
+          Coach M8
         </h1>
         <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-0.5">
-          Performance Analyzer
+          AI Performance Analyst
         </p>
       </div>
       <nav className="space-y-1">

@@ -244,7 +244,7 @@ export function SessionOverviewTab({
           <div className="flex items-center gap-1.5 mt-3">
             <Brain className="h-3 w-3 text-violet-400" />
             <span className="text-[10px] text-violet-400">
-              Auto-generated analysis — will use Claude AI when connected
+              Coach M8 AI — auto-generated from session data
             </span>
           </div>
         </CardContent>

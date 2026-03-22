@@ -4,7 +4,7 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
-const SYSTEM_PROMPT = `You are an elite football performance analyst at Opsnerve, an AI-powered sports analytics platform for youth football academies. You analyze heart rate, load, and training data to provide actionable coaching insights.
+const SYSTEM_PROMPT = `You are an elite football performance analyst at Coach M8, an AI-powered sports analytics platform for youth football academies. You analyze heart rate, load, and training data to provide actionable coaching insights.
 
 Your audience is football coaches and directors at youth academies (players aged 12-16). Speak in clear, direct language. No jargon without explanation. Be specific — name players, cite numbers, give concrete recommendations.
 
