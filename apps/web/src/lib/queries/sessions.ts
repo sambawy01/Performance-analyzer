@@ -44,16 +44,26 @@ export async function getSessionById(sessionId: string) {
   if (!session) return null;
 
   // Fetch related data separately
-  const [videosRes, tagsRes, wearableMetricsRes] = await Promise.all([
+  const [videosRes, wearableMetricsRes] = await Promise.all([
     supabase.from("videos").select("*").eq("session_id", sessionId),
-    supabase.from("video_tags").select("*, players(name, jersey_number)").eq("video_id", sessionId),
     supabase.from("wearable_metrics").select("*, players(name, jersey_number, position, photo_url)").eq("session_id", sessionId),
   ]);
+
+  // Fetch video tags by video IDs (not session ID)
+  const videoIds = (videosRes.data ?? []).map((v: any) => v.id);
+  let tags: any[] = [];
+  if (videoIds.length > 0) {
+    const { data: tagsData } = await supabase
+      .from("video_tags")
+      .select("*, players(name, jersey_number)")
+      .in("video_id", videoIds);
+    tags = tagsData ?? [];
+  }
 
   return {
     ...session,
     videos: videosRes.data ?? [],
-    video_tags: tagsRes.data ?? [],
+    video_tags: tags,
     wearable_metrics: wearableMetricsRes.data ?? [],
   };
 }
