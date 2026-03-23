@@ -43,6 +43,38 @@ export default async function PlayerProfilePage({
     .limit(10);
   const recentMetrics = recentMetricsRaw ?? [];
 
+  // Fetch CV pipeline metrics for this player
+  const { data: cvMetricsRaw } = await supabase
+    .from("cv_metrics")
+    .select("total_distance_m, max_speed_kmh, avg_speed_kmh, sprint_count, sprint_distance_m, high_speed_run_count, accel_events, decel_events, off_ball_movement_score, session_id")
+    .eq("player_id", id)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  const cvMetrics = cvMetricsRaw ?? [];
+
+  // Get session dates for CV metrics
+  const cvSessionIds = [...new Set(cvMetrics.map((m: any) => m.session_id))];
+  const { data: cvSessions } = cvSessionIds.length > 0
+    ? await supabase.from("sessions").select("id, date, type").in("id", cvSessionIds)
+    : { data: [] };
+  const cvSessionMap = new Map((cvSessions ?? []).map((s: any) => [s.id, s]));
+
+  const enrichedCvMetrics = cvMetrics.map((m: any) => ({
+    ...m,
+    session: cvSessionMap.get(m.session_id) ?? null,
+  }));
+
+  // CV averages for overview
+  const cvAvg = cvMetrics.length > 0 ? {
+    distance: Math.round(cvMetrics.reduce((s: number, m: any) => s + m.total_distance_m, 0) / cvMetrics.length),
+    maxSpeed: (cvMetrics.reduce((s: number, m: any) => s + m.max_speed_kmh, 0) / cvMetrics.length).toFixed(1),
+    sprints: Math.round(cvMetrics.reduce((s: number, m: any) => s + m.sprint_count, 0) / cvMetrics.length),
+    hsr: Math.round(cvMetrics.reduce((s: number, m: any) => s + m.high_speed_run_count, 0) / cvMetrics.length),
+    accel: Math.round(cvMetrics.reduce((s: number, m: any) => s + m.accel_events, 0) / cvMetrics.length),
+    decel: Math.round(cvMetrics.reduce((s: number, m: any) => s + m.decel_events, 0) / cvMetrics.length),
+    movement: Math.round(cvMetrics.reduce((s: number, m: any) => s + (m.off_ball_movement_score ?? 0), 0) / cvMetrics.length),
+  } : null;
+
   if (!player) {
     notFound();
   }
@@ -95,6 +127,29 @@ export default async function PlayerProfilePage({
         context={`Player: ${player.name}, ${player.position}, Age Group ${player.age_group}, Jersey #${player.jersey_number}. ${recentSessionCount} sessions in last 28 days. Latest ACWR: ${latestLoad?.acwr_ratio ?? 'N/A'} (${latestLoad?.risk_flag ?? 'N/A'}).`}
         placeholder="Generate a comprehensive AI development report covering physical profile, load management, strengths, development areas, coaching recommendations, and a weekly load prescription."
       />
+
+      {/* CV Pipeline — Physical Performance from Video Tracking */}
+      {cvAvg && (
+        <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4">
+          <h3 className="text-sm font-semibold text-white/80 uppercase tracking-wider mb-3">Physical Performance — Video Tracking (Avg per Session)</h3>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {[
+              { label: "Distance", value: `${(cvAvg.distance / 1000).toFixed(1)} km`, color: "text-[#00d4ff]" },
+              { label: "Top Speed", value: `${cvAvg.maxSpeed} km/h`, color: "text-[#00ff88]" },
+              { label: "Sprints", value: cvAvg.sprints, color: "text-[#ff6b35]" },
+              { label: "High Speed Runs", value: cvAvg.hsr, color: "text-[#a855f7]" },
+              { label: "Accelerations", value: cvAvg.accel, color: "text-[#00d4ff]" },
+              { label: "Decelerations", value: cvAvg.decel, color: "text-[#ff3355]" },
+              { label: "Movement Score", value: `${cvAvg.movement}/100`, color: "text-[#00ff88]" },
+            ].map((stat) => (
+              <div key={stat.label} className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2.5 text-center">
+                <p className={`font-mono text-lg font-bold ${stat.color}`}>{stat.value}</p>
+                <p className="text-[10px] text-white/50 uppercase tracking-wider mt-0.5">{stat.label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <Tabs defaultValue="physical">
         <TabsList>
