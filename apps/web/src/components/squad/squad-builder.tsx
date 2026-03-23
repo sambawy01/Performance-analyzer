@@ -484,8 +484,24 @@ export function SquadBuilder({
 
           <div className="ml-auto flex items-center gap-3">
             <ExportShareBar
-              title="Coach M8 Starting XI"
-              content={startingXI.map((p) => `${p.position} - #${p.jerseyNumber} ${p.name}`).join("\n")}
+              title={`Coach M8 — Match Squad${opponent ? ` vs ${opponent}` : ""} (${matchDate})`}
+              content={[
+                `## Formation: ${formation}`,
+                opponent ? `## Opponent: ${opponent}` : "",
+                `## Date: ${matchDate}`,
+                "",
+                "## Starting XI",
+                ...startingXI.map((p) => `${p.position} — #${p.jerseyNumber} ${p.name} | ACWR: ${p.acwrRatio?.toFixed(2) ?? "N/A"} | HR: ${p.hrAvg ?? "N/A"} bpm | TRIMP: ${p.trimpScore?.toFixed(0) ?? "N/A"}`),
+                "",
+                "## Bench",
+                ...bench.map((p) => `#${p.jerseyNumber} ${p.name} (${p.position}) | ACWR: ${p.acwrRatio?.toFixed(2) ?? "N/A"}`),
+                "",
+                "## Excluded (Rest/Injury Risk)",
+                ...excluded.map((p) => `#${p.jerseyNumber} ${p.name} — ${p.riskFlag === "red" ? "HIGH RISK" : "Injured"} (ACWR: ${p.acwrRatio?.toFixed(2) ?? "N/A"})`),
+                "",
+                aiResult?.reasoning ? `## AI Reasoning\n${aiResult.reasoning}` : "",
+                aiResult?.subTiming?.length ? `## Sub Timing\n${aiResult.subTiming.map((s: any) => `${s.minute}' — ${s.playerOut} → ${s.playerIn}: ${s.reason}`).join("\n")}` : "",
+              ].filter(Boolean).join("\n")}
             />
             <button
               onClick={handleAiRecommend}
