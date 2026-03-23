@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Brain, Loader2, Sparkles, FileText, ChevronDown, ChevronRight } from "lucide-react";
+import { ExportShareBar } from "@/components/ui/export-share-bar";
 
 interface SessionOption {
   id: string;
@@ -265,27 +266,33 @@ export function MatchDebrief({ sessions }: MatchDebriefProps) {
 
       {/* Debrief report */}
       {debrief && !loading && (
-        <div
-          className="rounded-xl border border-white/[0.08] p-6 space-y-1.5"
-          style={{ background: "rgba(10,14,26,0.8)" }}
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <Brain className="h-4 w-4 text-[#a855f7]" />
-            <h3 className="text-sm font-semibold text-white/80">
-              AI Match Debrief Report
-            </h3>
-            <span
-              className="ml-auto text-xs px-2 py-0.5 rounded-full"
-              style={{
-                background: "rgba(168,85,247,0.15)",
-                color: "#a855f7",
-              }}
-            >
-              Coach M8
-            </span>
+        <>
+          <div
+            className="rounded-xl border border-white/[0.08] p-6 space-y-1.5"
+            style={{ background: "rgba(10,14,26,0.8)" }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <Brain className="h-4 w-4 text-[#a855f7]" />
+              <h3 className="text-sm font-semibold text-white/80">
+                AI Match Debrief Report
+              </h3>
+              <span
+                className="ml-auto text-xs px-2 py-0.5 rounded-full"
+                style={{
+                  background: "rgba(168,85,247,0.15)",
+                  color: "#a855f7",
+                }}
+              >
+                Coach M8
+              </span>
+            </div>
+            <div className="space-y-1">{formatMarkdown(debrief)}</div>
           </div>
-          <div className="space-y-1">{formatMarkdown(debrief)}</div>
-        </div>
+          <ExportShareBar
+            title="Coach M8 Match Debrief"
+            content={debrief}
+          />
+        </>
       )}
     </div>
   );

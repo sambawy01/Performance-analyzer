@@ -14,6 +14,7 @@ import {
   User,
   Bot,
 } from "lucide-react";
+import { ExportShareBar } from "@/components/ui/export-share-bar";
 
 interface Message {
   role: "user" | "assistant";
@@ -231,7 +232,15 @@ export function AiReportChat({
           )}
 
           {report && !loading && (
-            <div className="space-y-1.5">{formatMarkdown(report)}</div>
+            <>
+              <div className="space-y-1.5">{formatMarkdown(report)}</div>
+              <div className="mt-4">
+                <ExportShareBar
+                  title={title}
+                  content={report}
+                />
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

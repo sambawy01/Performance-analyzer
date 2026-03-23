@@ -23,6 +23,7 @@ import {
   Trophy,
   Medal,
 } from "lucide-react";
+import { ExportShareBar } from "@/components/ui/export-share-bar";
 import { HR_ZONE_COLORS, HR_ZONE_LABELS } from "@/lib/hr-zones";
 import type { HrZone } from "@/lib/hr-zones";
 import { MetricInfo } from "@/components/ui/metric-info";
@@ -488,6 +489,14 @@ export function SessionOverviewTab({
   /* ---- Main render ---- */
   return (
     <div className="space-y-8">
+      {/* Export bar */}
+      <div className="flex justify-end">
+        <ExportShareBar
+          title={`Session Overview — ${session.type} · ${session.date}`}
+          content={`Session: ${session.type}\nDate: ${session.date}\nAge Group: ${session.age_group}\nDuration: ${session.duration_minutes ?? "—"} min\nPlayers tracked: ${metrics.length}\nAvg TRIMP: ${avgTrimp ?? "—"}\nAvg HR: ${avgHr ?? "—"} bpm`}
+        />
+      </div>
+
       {/* =========================================================== */}
       {/*  AI Session Analysis — gradient left border + brain glow     */}
       {/* =========================================================== */}

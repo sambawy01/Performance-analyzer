@@ -312,3 +312,37 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
+/* ─── Print / PDF export styles ─── */
+@media print {
+  /* Hide non-content elements */
+  aside, header, .no-print, [data-no-print] {
+    display: none !important;
+  }
+
+  /* White background for printing */
+  body, html {
+    background: white !important;
+    color: black !important;
+  }
+
+  /* Cards get borders instead of dark backgrounds */
+  .glass, [class*="bg-white/"], [class*="bg-[#0"] {
+    background: white !important;
+    border: 1px solid #ddd !important;
+    color: black !important;
+  }
+
+  /* Make text dark for print */
+  * {
+    color: black !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+
+  /* Preserve colored badges */
+  .badge { border: 1px solid currentColor !important; }
+
+  /* Full width for print */
+  main { padding: 0 !important; }
+}

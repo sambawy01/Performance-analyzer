@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, Loader2, Sparkles, RefreshCw, AlertCircle, Share2, Download, TrendingUp, TrendingDown, Minus, Users, Calendar, Activity } from "lucide-react";
+import { FileText, Loader2, Sparkles, RefreshCw, AlertCircle, TrendingUp, TrendingDown, Minus, Calendar, Activity } from "lucide-react";
+import { ExportShareBar } from "@/components/ui/export-share-bar";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 
@@ -282,22 +283,10 @@ export function ParentReportCard({ players }: ParentReportCardProps) {
 
           {/* Footer Actions */}
           <div className="px-6 pb-5 flex items-center gap-3 border-t border-slate-100 pt-4">
-            <button
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 cursor-not-allowed opacity-60"
-              disabled
-              title="Coming soon"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download PDF
-            </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 cursor-not-allowed opacity-60"
-              disabled
-              title="Coming soon"
-            >
-              <Share2 className="h-3.5 w-3.5" />
-              Share via WhatsApp
-            </button>
+            <ExportShareBar
+              title={`Coach M8 Report — ${playerInfo.name}`}
+              content={report}
+            />
             <span className="text-xs text-slate-300 ml-auto">
               The Maker Football Incubator · Coach M8
             </span>

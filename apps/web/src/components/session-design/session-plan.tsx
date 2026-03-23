@@ -5,6 +5,7 @@ import { ClipboardList, Loader2, Sparkles, RefreshCw, AlertCircle } from "lucide
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ExportShareBar } from "@/components/ui/export-share-bar";
 
 const SESSION_TYPES = ["training", "recovery", "tactical", "match-prep", "fitness"];
 const FOCUS_AREAS = ["pressing", "possession", "transitions", "set pieces", "fitness", "defending", "attacking"];
@@ -256,22 +257,28 @@ export function SessionPlan() {
 
       {/* Session Plan */}
       {plan && !loading && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-[#a855f7]" />
-              <span className="text-gradient">
-                {type.charAt(0).toUpperCase() + type.slice(1)} Session — {focus.charAt(0).toUpperCase() + focus.slice(1)} Focus
-              </span>
-              <span className="ml-auto text-xs text-white/40">
-                {playerCount} players · {duration} min
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1.5">{formatMarkdown(plan)}</div>
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <ClipboardList className="h-4 w-4 text-[#a855f7]" />
+                <span className="text-gradient">
+                  {type.charAt(0).toUpperCase() + type.slice(1)} Session — {focus.charAt(0).toUpperCase() + focus.slice(1)} Focus
+                </span>
+                <span className="ml-auto text-xs text-white/40">
+                  {playerCount} players · {duration} min
+                </span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1.5">{formatMarkdown(plan)}</div>
+            </CardContent>
+          </Card>
+          <ExportShareBar
+            title={`Session Plan — ${type} · ${focus} Focus`}
+            content={plan}
+          />
+        </>
       )}
     </div>
   );

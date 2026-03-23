@@ -5,6 +5,7 @@ import { Target, Loader2, Sparkles, RefreshCw, AlertCircle } from "lucide-react"
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ExportShareBar } from "@/components/ui/export-share-bar";
 
 function formatMarkdown(text: string) {
   return text.split("\n").map((line, i) => {
@@ -190,22 +191,28 @@ export function ScoutReport() {
 
       {/* Report */}
       {report && !loading && (
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Target className="h-4 w-4 text-[#00d4ff]" />
-                <span className="text-gradient">
-                  Scout Report — vs {opponent}
-                </span>
-              </CardTitle>
-              <span className="text-xs text-white/40">{matchDate}</span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-1.5">{formatMarkdown(report)}</div>
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Target className="h-4 w-4 text-[#00d4ff]" />
+                  <span className="text-gradient">
+                    Scout Report — vs {opponent}
+                  </span>
+                </CardTitle>
+                <span className="text-xs text-white/40">{matchDate}</span>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-1.5">{formatMarkdown(report)}</div>
+            </CardContent>
+          </Card>
+          <ExportShareBar
+            title={`Scout Report — vs ${opponent}`}
+            content={report}
+          />
+        </>
       )}
     </div>
   );

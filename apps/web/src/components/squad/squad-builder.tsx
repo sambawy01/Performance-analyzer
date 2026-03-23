@@ -24,6 +24,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import type { TacticalMetrics } from "@/types";
+import { ExportShareBar } from "@/components/ui/export-share-bar";
 
 interface SquadBuilderProps {
   players: PitchPlayer[];
@@ -481,7 +482,11 @@ export function SquadBuilder({
             />
           </div>
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-3">
+            <ExportShareBar
+              title="Coach M8 Starting XI"
+              content={startingXI.map((p) => `${p.position} - #${p.jerseyNumber} ${p.name}`).join("\n")}
+            />
             <button
               onClick={handleAiRecommend}
               disabled={aiLoading}
