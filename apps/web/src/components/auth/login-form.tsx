@@ -43,7 +43,7 @@ export function LoginForm() {
           Coach M8
         </CardTitle>
         <p className="text-xs text-white/60 uppercase tracking-widest">
-          AI Performance Analyst
+          AI Performance Analysis & Squad Management
         </p>
       </CardHeader>
       <CardContent>

@@ -46,7 +46,7 @@ function NavContent({ role, onNavigate }: { role: string; onNavigate?: () => voi
     <>
       <div className="mb-6">
         <h1 className="text-lg font-bold text-gradient tracking-tight">Coach M8</h1>
-        <p className="text-xs text-white/40 uppercase tracking-widest mt-0.5">AI Performance Analyst</p>
+        <p className="text-xs text-white/40 uppercase tracking-widest mt-0.5">AI Performance Analysis & Squad Management</p>
       </div>
       <nav className="space-y-0.5">
         {visibleItems.map((item) => {
@@ -109,7 +109,7 @@ export function Sidebar({ role }: { role: string }) {
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-lg font-bold text-gradient tracking-tight">Coach M8</h1>
-                <p className="text-xs text-white/40 uppercase tracking-widest mt-0.5">AI Performance Analyst</p>
+                <p className="text-xs text-white/40 uppercase tracking-widest mt-0.5">AI Performance Analysis & Squad Management</p>
               </div>
               <button
                 onClick={() => setMobileOpen(false)}

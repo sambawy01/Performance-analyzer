@@ -138,7 +138,7 @@ function exportToPdf(title: string, content: string) {
   <div class="header">
     <div>
       <div class="logo">Coach M8</div>
-      <div class="subtitle">AI Performance Analyst</div>
+      <div class="subtitle">AI Performance Analysis & Squad Management</div>
     </div>
     <div class="date">${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</div>
   </div>
