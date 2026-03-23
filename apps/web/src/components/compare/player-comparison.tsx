@@ -36,9 +36,25 @@ const METRICS: { key: keyof EnrichedPlayer; label: string; unit?: string; higher
   { key: "sprintCount", label: "Sprint Count", higherBetter: true },
 ];
 
-function normalize(value: number | null, min: number, max: number): number {
-  if (value === null || max === min) return 50;
-  return Math.round(((value - min) / (max - min)) * 100);
+// Absolute ranges for meaningful normalization (not relative to selected players)
+const ABSOLUTE_RANGES: Record<string, { min: number; max: number }> = {
+  hrAvg: { min: 120, max: 185 },
+  hrMax: { min: 160, max: 210 },
+  trimp: { min: 50, max: 250 },
+  recovery: { min: 10, max: 45 },
+  acwr: { min: 0.6, max: 1.8 },
+  maxSpeedKmh: { min: 18, max: 35 },
+  sprintCount: { min: 3, max: 30 },
+};
+
+function normalize(value: number | null, key: string, higherBetter: boolean): number {
+  if (value === null) return 0;
+  const range = ABSOLUTE_RANGES[key] ?? { min: 0, max: 100 };
+  let score = ((value - range.min) / (range.max - range.min)) * 100;
+  score = Math.max(0, Math.min(100, score));
+  // Invert for metrics where lower is better (ACWR, Avg HR)
+  if (!higherBetter) score = 100 - score;
+  return Math.round(score);
 }
 
 function formatMarkdown(text: string) {
@@ -61,9 +77,11 @@ function formatMarkdown(text: string) {
 }
 
 export function PlayerComparison({ players }: PlayerComparisonProps) {
-  const [selectedIds, setSelectedIds] = useState<string[]>(
-    players.slice(0, 2).map((p) => p.id)
-  );
+  const [selectedIds, setSelectedIds] = useState<string[]>(() => {
+    // Default to first 2 players that have data
+    const withData = players.filter((p) => p.hrAvg !== null || p.trimp !== null);
+    return withData.slice(0, 2).map((p) => p.id);
+  });
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
 
@@ -89,15 +107,11 @@ export function PlayerComparison({ players }: PlayerComparisonProps) {
     setSelectedIds(updated);
   };
 
-  // Build radar data
+  // Build radar data with absolute normalization
   const radarData = METRICS.slice(0, 6).map((m) => {
-    const values = selectedPlayers.map((p) => p[m.key] as number | null);
-    const nums = values.filter((v) => v !== null) as number[];
-    const min = Math.min(...nums);
-    const max = Math.max(...nums);
     const point: { subject: string; [key: string]: string | number } = { subject: m.label };
     selectedPlayers.forEach((p) => {
-      point[p.name] = normalize(p[m.key] as number | null, min, max);
+      point[p.name] = normalize(p[m.key] as number | null, m.key, m.higherBetter);
     });
     return point;
   });
