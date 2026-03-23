@@ -39,17 +39,24 @@ export default async function DashboardPage() {
   const sessions = sessionsRaw ?? [];
   const latestSession = sessions[0] ?? null;
 
+  // Fetch alerts — no FK join (breaks on Supabase Cloud)
   const { data: alertsRaw } = await supabase
     .from("load_records")
-    .select(
-      "*, players!inner(name, jersey_number, age_group, academy_id, position)"
-    )
-    .eq("players.academy_id", profile.academy_id)
+    .select("*")
     .in("risk_flag", ["amber", "red"])
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(40);
 
-  const alerts = alertsRaw ?? [];
+  // Enrich with player data
+  const alertPlayerIds = [...new Set((alertsRaw ?? []).map((a: any) => a.player_id))];
+  const { data: alertPlayers } = alertPlayerIds.length > 0
+    ? await supabase.from("players").select("id, name, jersey_number, age_group, academy_id, position").in("id", alertPlayerIds)
+    : { data: [] };
+  const alertPlayerMap = new Map((alertPlayers ?? []).map((p: any) => [p.id, p]));
+  const alerts = (alertsRaw ?? [])
+    .map((a: any) => ({ ...a, players: alertPlayerMap.get(a.player_id) }))
+    .filter((a: any) => a.players?.academy_id === profile.academy_id)
+    .slice(0, 20);
 
   // Trend data
   const since = new Date();
@@ -83,13 +90,10 @@ export default async function DashboardPage() {
     }));
   }
 
-  // Risk distribution
+  // Risk distribution — no FK join
   const { data: loadData } = await supabase
     .from("load_records")
-    .select(
-      "risk_flag, player_id, date, players!inner(academy_id, age_group)"
-    )
-    .eq("players.academy_id", profile.academy_id)
+    .select("risk_flag, player_id, date")
     .order("date", { ascending: false });
 
   const seen = new Set<string>();

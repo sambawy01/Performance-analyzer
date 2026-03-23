@@ -32,11 +32,22 @@ export default async function SessionDetailPage({
     getSessionLoadRecords(id),
   ]);
 
-  // Fetch CV metrics for this session
-  const { data: cvMetrics } = await supabase
+  // Fetch CV metrics + resolve player names separately (FK join fails on Supabase Cloud)
+  const { data: rawCvMetrics } = await supabase
     .from("cv_metrics")
-    .select("*, players(name, jersey_number, position)")
+    .select("*")
     .eq("session_id", id);
+
+  // Enrich with player data
+  const cvPlayerIds = (rawCvMetrics ?? []).map((m: any) => m.player_id);
+  const { data: cvPlayers } = cvPlayerIds.length > 0
+    ? await supabase.from("players").select("id, name, jersey_number, position").in("id", cvPlayerIds)
+    : { data: [] };
+  const cvPlayerMap = new Map((cvPlayers ?? []).map((p: any) => [p.id, p]));
+  const cvMetrics = (rawCvMetrics ?? []).map((m: any) => ({
+    ...m,
+    players: cvPlayerMap.get(m.player_id) ?? null,
+  }));
 
   // Fetch tactical data
   const { data: tactical } = await supabase

@@ -2,25 +2,17 @@ import { createAdminClient } from "@/lib/supabase/server";
 
 export async function getSessions(
   academyId: string,
-  filters?: {
-    ageGroup?: string;
-    type?: string;
-  }
+  filters?: { ageGroup?: string; type?: string }
 ) {
   const supabase = createAdminClient();
-
   let query = supabase
     .from("sessions")
     .select("*")
     .eq("academy_id", academyId)
     .order("date", { ascending: false });
 
-  if (filters?.ageGroup) {
-    query = query.eq("age_group", filters.ageGroup);
-  }
-  if (filters?.type) {
-    query = query.eq("type", filters.type);
-  }
+  if (filters?.ageGroup) query = query.eq("age_group", filters.ageGroup);
+  if (filters?.type) query = query.eq("type", filters.type);
 
   const { data, error } = await query;
   if (error) console.error("getSessions error:", error.message);
@@ -30,7 +22,6 @@ export async function getSessions(
 export async function getSessionById(sessionId: string) {
   const supabase = createAdminClient();
 
-  // Fetch session separately — no complex joins that break with RLS
   const { data: session, error: sessError } = await supabase
     .from("sessions")
     .select("*")
@@ -43,41 +34,80 @@ export async function getSessionById(sessionId: string) {
   }
   if (!session) return null;
 
-  // Fetch related data separately
-  const [videosRes, wearableMetricsRes] = await Promise.all([
-    supabase.from("videos").select("*").eq("session_id", sessionId),
-    supabase.from("wearable_metrics").select("*, players(name, jersey_number, position, photo_url)").eq("session_id", sessionId),
-  ]);
+  // Fetch videos
+  const { data: videos } = await supabase
+    .from("videos")
+    .select("*")
+    .eq("session_id", sessionId);
 
-  // Fetch video tags by video IDs (not session ID)
-  const videoIds = (videosRes.data ?? []).map((v: any) => v.id);
+  // Fetch wearable metrics WITHOUT player join (FK not in Supabase Cloud schema cache)
+  const { data: wearableMetrics } = await supabase
+    .from("wearable_metrics")
+    .select("*")
+    .eq("session_id", sessionId);
+
+  // Fetch video tags from videos
+  const videoIds = (videos ?? []).map((v: any) => v.id);
   let tags: any[] = [];
   if (videoIds.length > 0) {
     const { data: tagsData } = await supabase
       .from("video_tags")
-      .select("*, players(name, jersey_number)")
+      .select("*")
       .in("video_id", videoIds);
     tags = tagsData ?? [];
   }
 
+  // Fetch ALL players for the academy to resolve player names
+  const { data: allPlayers } = await supabase
+    .from("players")
+    .select("id, name, jersey_number, position, photo_url, age_group")
+    .eq("academy_id", session.academy_id);
+
+  const playerMap = new Map((allPlayers ?? []).map((p: any) => [p.id, p]));
+
+  // Enrich wearable metrics with player data
+  const enrichedMetrics = (wearableMetrics ?? []).map((m: any) => ({
+    ...m,
+    players: playerMap.get(m.player_id) ?? null,
+  }));
+
+  // Enrich video tags with player data
+  const enrichedTags = tags.map((t: any) => ({
+    ...t,
+    players: playerMap.get(t.player_id) ?? null,
+  }));
+
   return {
     ...session,
-    videos: videosRes.data ?? [],
-    video_tags: tags,
-    wearable_metrics: wearableMetricsRes.data ?? [],
+    videos: videos ?? [],
+    video_tags: enrichedTags,
+    wearable_metrics: enrichedMetrics,
   };
 }
 
 export async function getSessionLoadRecords(sessionId: string) {
   const supabase = createAdminClient();
 
-  const { data, error } = await supabase
+  const { data: records } = await supabase
     .from("load_records")
-    .select("*, players(name, jersey_number, position)")
+    .select("*")
     .eq("session_id", sessionId);
 
-  if (error) console.error("getSessionLoadRecords error:", error.message);
-  return data ?? [];
+  if (!records || records.length === 0) return [];
+
+  // Get player names separately
+  const playerIds = records.map((r: any) => r.player_id);
+  const { data: players } = await supabase
+    .from("players")
+    .select("id, name, jersey_number, position")
+    .in("id", playerIds);
+
+  const playerMap = new Map((players ?? []).map((p: any) => [p.id, p]));
+
+  return records.map((r: any) => ({
+    ...r,
+    players: playerMap.get(r.player_id) ?? null,
+  }));
 }
 
 export async function createSession(sessionData: {
