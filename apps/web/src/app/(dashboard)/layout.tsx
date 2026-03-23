@@ -35,7 +35,7 @@ export default async function DashboardLayout({
         <Sidebar role={profile.role} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header user={profile} />
-          <main className="flex-1 overflow-y-auto p-6 pb-28">{children}</main>
+          <main className="flex-1 overflow-y-auto p-6">{children}</main>
           <QueryBar />
         </div>
       </div>
