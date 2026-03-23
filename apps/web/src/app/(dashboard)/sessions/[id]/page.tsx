@@ -38,28 +38,43 @@ export default async function SessionDetailPage({
     .select("*, players(name, jersey_number, position)")
     .eq("session_id", id);
 
-  // Fetch tactical data + history for comparison
-  const [{ data: tactical }, { data: tacticalHistory }] = await Promise.all([
-    supabase.from("tactical_metrics").select("*").eq("session_id", id).single(),
-    supabase.from("tactical_metrics")
-      .select("session_id, avg_formation, compactness_avg, pressing_intensity, possession_pct, transition_speed_atk_s, transition_speed_def_s, sessions!inner(date, type)")
-      .neq("session_id", id)
-      .order("sessions(date)", { ascending: false })
-      .limit(10),
-  ]);
+  // Fetch tactical data
+  const { data: tactical } = await supabase
+    .from("tactical_metrics")
+    .select("*")
+    .eq("session_id", id)
+    .single();
+
+  // Fetch tactical history for comparison
+  const { data: allTactical } = await supabase
+    .from("tactical_metrics")
+    .select("session_id, avg_formation, compactness_avg, pressing_intensity, possession_pct, transition_speed_atk_s, transition_speed_def_s")
+    .neq("session_id", id)
+    .limit(10);
+
+  // Get dates for tactical history
+  const tacticalSessionIds = (allTactical ?? []).map((t: any) => t.session_id);
+  const { data: tactSessions } = tacticalSessionIds.length > 0
+    ? await supabase.from("sessions").select("id, date, type").in("id", tacticalSessionIds)
+    : { data: [] };
+  const tactSessionMap = new Map((tactSessions ?? []).map((s: any) => [s.id, s]));
+  const tacticalHistory = allTactical ?? [];
 
   // Flatten tactical history with session dates
-  const tactHistory = (tacticalHistory ?? []).map((t: any) => ({
+  const tactHistory = (tacticalHistory ?? []).map((t: any) => {
+    const sess = tactSessionMap.get(t.session_id);
+    return {
     session_id: t.session_id,
-    date: t.sessions?.date ?? "",
-    type: t.sessions?.type ?? "",
+    date: sess?.date ?? "",
+    type: sess?.type ?? "",
     pressing_intensity: t.pressing_intensity,
     possession_pct: t.possession_pct,
     compactness_avg: t.compactness_avg,
     transition_speed_atk_s: t.transition_speed_atk_s,
     transition_speed_def_s: t.transition_speed_def_s,
     avg_formation: t.avg_formation,
-  }));
+  };
+  });
 
 
   if (!session) {
