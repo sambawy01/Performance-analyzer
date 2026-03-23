@@ -134,7 +134,7 @@ export function ScoutReport() {
             {loading ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Generating Scout Report...
+                Researching &amp; Analyzing...
               </>
             ) : report ? (
               <>
@@ -144,7 +144,7 @@ export function ScoutReport() {
             ) : (
               <>
                 <Sparkles className="h-4 w-4" />
-                Generate Scout Report
+                Generate Opponent Dossier
               </>
             )}
           </button>
@@ -178,10 +178,10 @@ export function ScoutReport() {
               </div>
               <div className="text-center">
                 <p className="text-sm text-[#00d4ff] animate-pulse font-medium">
-                  Analyzing squad data...
+                  Researching {opponent}...
                 </p>
                 <p className="text-xs text-white/40 mt-1">
-                  Building tactical plan for {opponent}
+                  Gathering intel, analyzing formation &amp; key players
                 </p>
               </div>
             </div>
@@ -198,7 +198,7 @@ export function ScoutReport() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <Target className="h-4 w-4 text-[#00d4ff]" />
                   <span className="text-gradient">
-                    Scout Report — vs {opponent}
+                    Opponent Dossier — vs {opponent}
                   </span>
                 </CardTitle>
                 <span className="text-xs text-white/40">{matchDate}</span>
