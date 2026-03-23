@@ -7,11 +7,21 @@ import {
   TrendingUp,
   Sparkles,
   AlertTriangle,
+  Moon,
+  Gauge,
 } from "lucide-react";
 import { type WeekPlan, INTENSITY_COLORS } from "./types";
 
+interface BasicStats {
+  sessionsPlanned: number;
+  restDays: number;
+  avgIntensity: number;
+  playersAtRiskCount: number;
+}
+
 interface WeekSummaryProps {
   plan: WeekPlan | null;
+  basicStats?: BasicStats;
 }
 
 function StatBlock({
@@ -46,17 +56,84 @@ function StatBlock({
   );
 }
 
-export function WeekSummary({ plan }: WeekSummaryProps) {
+function getIntensityLabel(avg: number): string {
+  if (avg >= 8) return "High";
+  if (avg >= 5) return "Medium";
+  if (avg >= 3) return "Low";
+  if (avg > 0) return "Recovery";
+  return "-";
+}
+
+function getIntensityColor(avg: number): string {
+  if (avg >= 8) return "#ff3355";
+  if (avg >= 5) return "#ff6b35";
+  if (avg >= 3) return "#00ff88";
+  if (avg > 0) return "#00d4ff";
+  return "rgba(255,255,255,0.3)";
+}
+
+export function WeekSummary({ plan, basicStats }: WeekSummaryProps) {
+  // Always show basic stats section
   if (!plan) {
     return (
-      <div className="glass rounded-xl p-5">
-        <div className="flex items-center gap-2 mb-3">
-          <Activity className="h-4 w-4 text-white/40" />
-          <h3 className="text-sm font-semibold text-white/60">Week Summary</h3>
+      <div className="glass rounded-xl p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Activity className="h-4 w-4 text-white/50" />
+          <h3 className="text-sm font-semibold text-white/70">Week Summary</h3>
         </div>
-        <p className="text-xs text-white/30 italic">
-          Generate a weekly plan to see the summary and AI analysis.
-        </p>
+
+        {basicStats ? (
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatBlock
+                icon={Calendar}
+                label="Sessions"
+                value={basicStats.sessionsPlanned}
+                color="#00ff88"
+              />
+              <StatBlock
+                icon={Moon}
+                label="Rest Days"
+                value={basicStats.restDays}
+                color="#00d4ff"
+              />
+              <StatBlock
+                icon={Gauge}
+                label="Avg Intensity"
+                value={
+                  basicStats.avgIntensity > 0
+                    ? `${basicStats.avgIntensity} (${getIntensityLabel(basicStats.avgIntensity)})`
+                    : "-"
+                }
+                color={getIntensityColor(basicStats.avgIntensity)}
+              />
+              <StatBlock
+                icon={AlertTriangle}
+                label="Players at Risk"
+                value={basicStats.playersAtRiskCount}
+                color={
+                  basicStats.playersAtRiskCount > 3
+                    ? "#ff3355"
+                    : basicStats.playersAtRiskCount > 0
+                    ? "#ff6b35"
+                    : "#00ff88"
+                }
+              />
+            </div>
+
+            <div className="border-t border-white/[0.06] pt-3">
+              <p className="text-xs text-white/30 italic flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-[#a855f7]/50" />
+                Generate a weekly plan with AI for detailed load analysis, ACWR
+                predictions, and player-specific recommendations.
+              </p>
+            </div>
+          </>
+        ) : (
+          <p className="text-xs text-white/30 italic">
+            Generate a weekly plan to see the summary and AI analysis.
+          </p>
+        )}
       </div>
     );
   }

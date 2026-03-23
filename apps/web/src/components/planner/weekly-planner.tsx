@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
 import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
   Loader2,
   CalendarDays,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DayCard } from "./day-card";
@@ -183,6 +185,33 @@ export function WeeklyPlanner({
   const isCurrentWeek =
     toDateKey(getMonday(today)) === toDateKey(currentMonday);
 
+  // Compute basic stats for WeekSummary even without AI
+  const sessionsThisWeek = weekDays.filter((d) => d.session !== null);
+  const restDaysCount = 7 - sessionsThisWeek.length;
+  const avgIntensity = sessionsThisWeek.length > 0
+    ? (() => {
+        const intensityValues: Record<string, number> = {
+          high: 9,
+          match: 8,
+          medium: 6,
+          low: 4,
+          recovery: 2,
+        };
+        const total = sessionsThisWeek.reduce(
+          (sum, d) => sum + (intensityValues[d.session!.intensity] ?? 5),
+          0
+        );
+        return Math.round(total / sessionsThisWeek.length * 10) / 10;
+      })()
+    : 0;
+
+  const basicStats = {
+    sessionsPlanned: sessionsThisWeek.length,
+    restDays: restDaysCount,
+    avgIntensity,
+    playersAtRiskCount: playersAtRisk.length,
+  };
+
   return (
     <div className="space-y-5">
       {/* Header Bar */}
@@ -256,27 +285,54 @@ export function WeeklyPlanner({
         </button>
       </div>
 
-      {/* Players at Risk Banner */}
+      {/* Players at Risk Banner — Compact Chip Grid */}
       {playersAtRisk.length > 0 && (
-        <div className="glass rounded-lg px-4 py-2.5 border-l-2 border-[#ff6b35]">
-          <div className="flex items-center gap-2 text-xs">
-            <span className="text-[#ff6b35] font-semibold uppercase tracking-wider">
-              Players at Risk:
+        <div className="glass rounded-lg px-4 py-3 border-l-2 border-[#ff6b35]">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-[#ff6b35]" />
+            <span className="text-[10px] text-[#ff6b35] font-semibold uppercase tracking-wider">
+              Players at Risk ({playersAtRisk.length})
             </span>
-            <div className="flex flex-wrap gap-1.5">
-              {playersAtRisk.map((p) => (
-                <span
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
+            {playersAtRisk.map((p) => {
+              const chipColor =
+                p.riskFlag === "red" ? "#ff3355" : "#ff6b35";
+              return (
+                <Link
                   key={p.jerseyNumber}
-                  className="font-mono text-white/70"
+                  href={`/players`}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md transition-all duration-200 hover:scale-[1.03]"
                   style={{
-                    color:
-                      p.riskFlag === "red" ? "#ff3355" : "#ff6b35",
+                    backgroundColor: `${chipColor}10`,
+                    border: `1px solid ${chipColor}30`,
                   }}
                 >
-                  #{p.jerseyNumber} {p.name} ({p.acwr.toFixed(2)})
-                </span>
-              ))}
-            </div>
+                  <span
+                    className="h-1.5 w-1.5 rounded-full shrink-0"
+                    style={{
+                      backgroundColor: chipColor,
+                      boxShadow: `0 0 4px ${chipColor}80`,
+                    }}
+                  />
+                  <span
+                    className="truncate"
+                    style={{ color: chipColor }}
+                  >
+                    #{p.jerseyNumber} {p.name}
+                  </span>
+                  <span
+                    className="font-mono text-[9px] px-1 py-0 rounded shrink-0"
+                    style={{
+                      backgroundColor: `${chipColor}20`,
+                      color: chipColor,
+                    }}
+                  >
+                    {p.acwr.toFixed(2)}
+                  </span>
+                </Link>
+              );
+            })}
           </div>
         </div>
       )}
@@ -296,16 +352,18 @@ export function WeeklyPlanner({
             dayName={day.dayName}
             dayNumber={day.dayNumber}
             month={day.month}
+            dateKey={day.dateKey}
             session={day.session}
             isToday={day.isToday}
             isMatch={day.isMatch}
             matchOpponent={day.matchOpponent}
+            playersAtRisk={playersAtRisk}
           />
         ))}
       </div>
 
       {/* Week Summary */}
-      <WeekSummary plan={aiPlan} />
+      <WeekSummary plan={aiPlan} basicStats={basicStats} />
     </div>
   );
 }
