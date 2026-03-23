@@ -73,7 +73,7 @@ export async function getActiveWearableSessions(sessionId: string) {
     .select(
       `
       *,
-      players(name, jersey_number, position, hr_max_measured, dob)
+      *
     `
     )
     .eq("session_id", sessionId)

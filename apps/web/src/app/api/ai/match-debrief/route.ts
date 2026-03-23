@@ -40,17 +40,17 @@ export async function POST(request: NextRequest) {
         supabase.from("sessions").select("*").eq("id", sessionId).single(),
         supabase
           .from("wearable_metrics")
-          .select("*, players!inner(name, jersey_number, position, age_group)")
+          .select("*")
           .eq("session_id", sessionId),
         supabase.from("tactical_metrics").select("*").eq("session_id", sessionId).maybeSingle(),
         supabase
           .from("video_tags")
-          .select("*, players!inner(name, jersey_number)")
+          .select("*")
           .eq("session_id", sessionId)
           .limit(30),
         supabase
           .from("load_records")
-          .select("*, players!inner(name, jersey_number)")
+          .select("*")
           .eq("session_id", sessionId),
         supabase
           .from("players")

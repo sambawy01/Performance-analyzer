@@ -40,39 +40,36 @@ export default async function PlannerPage() {
 
   const sessions = sessionsRaw ?? [];
 
-  // Fetch players at risk (amber/red ACWR)
+  // Fetch players at risk (amber/red ACWR) — no FK join
   const { data: riskRecords } = await supabase
     .from("load_records")
-    .select(
-      "player_id, acwr_ratio, risk_flag, date, players!inner(name, jersey_number, academy_id)"
-    )
-    .eq("players.academy_id", profile.academy_id)
+    .select("player_id, acwr_ratio, risk_flag, date")
     .in("risk_flag", ["amber", "red"])
     .order("date", { ascending: false })
     .limit(50);
 
-  // Deduplicate — latest per player
+  // Get player names
+  const riskPlayerIds = [...new Set((riskRecords ?? []).map((r: any) => r.player_id))];
+  const { data: riskPlayers } = riskPlayerIds.length > 0
+    ? await supabase.from("players").select("id, name, jersey_number").in("id", riskPlayerIds)
+    : { data: [] };
+  const riskPlayerMap = new Map((riskPlayers ?? []).map((p: any) => [p.id, p]));
+
   const seenPlayers = new Set<string>();
-  const playersAtRisk: Array<{
-    jerseyNumber: number;
-    name: string;
-    acwr: number;
-    riskFlag: string;
-  }> = [];
+  const playersAtRisk: Array<{ jerseyNumber: number; name: string; acwr: number; riskFlag: string }> = [];
 
   for (const r of riskRecords ?? []) {
     if (!seenPlayers.has(r.player_id)) {
       seenPlayers.add(r.player_id);
-      const player = r.players as unknown as {
-        name: string;
-        jersey_number: number;
-      };
-      playersAtRisk.push({
-        jerseyNumber: player.jersey_number,
-        name: player.name,
-        acwr: r.acwr_ratio,
-        riskFlag: r.risk_flag,
-      });
+      const player = riskPlayerMap.get(r.player_id);
+      if (player) {
+        playersAtRisk.push({
+          jerseyNumber: player.jersey_number,
+          name: player.name,
+          acwr: r.acwr_ratio,
+          riskFlag: r.risk_flag,
+        });
+      }
     }
   }
 

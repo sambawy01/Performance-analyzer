@@ -41,13 +41,13 @@ export async function POST(request: NextRequest) {
     // Get wearable metrics with player names
     const { data: metrics } = await supabase
       .from("wearable_metrics")
-      .select("*, players(name, position)")
+      .select("*")
       .eq("session_id", sessionId);
 
     // Get load alerts
     const { data: loadRecords } = await supabase
       .from("load_records")
-      .select("*, players(name)")
+      .select("*")
       .eq("session_id", sessionId)
       .in("risk_flag", ["amber", "red"]);
 

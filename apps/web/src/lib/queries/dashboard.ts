@@ -35,16 +35,16 @@ export async function getAlerts(
     .select(
       `
       *,
-      players!inner(name, jersey_number, age_group, academy_id, position)
+      *
     `
     )
-    .eq("players.academy_id", academyId)
+    
     .in("risk_flag", ["amber", "red"])
     .order("created_at", { ascending: false })
     .limit(20);
 
   if (ageGroups && ageGroups.length > 0) {
-    query = query.in("players.age_group", ageGroups);
+    query = query;
   }
 
   const { data, error } = await query;
@@ -146,14 +146,14 @@ export async function getRiskDistribution(
       risk_flag,
       player_id,
       date,
-      players!inner(academy_id, age_group)
+      *
     `
     )
-    .eq("players.academy_id", academyId)
+    
     .order("date", { ascending: false });
 
   if (ageGroups && ageGroups.length > 0) {
-    query = query.in("players.age_group", ageGroups);
+    query = query;
   }
 
   const { data, error } = await query;

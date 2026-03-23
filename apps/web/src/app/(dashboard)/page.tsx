@@ -141,6 +141,24 @@ export default async function DashboardPage() {
     );
   }
 
+  // Fetch CV pipeline averages from latest session with data
+  let avgCvDistance: number | null = null;
+  let avgCvSpeed: number | null = null;
+  let avgCvSprints: number | null = null;
+
+  if (sessionsWithMetrics) {
+    const { data: cvData } = await supabase
+      .from("cv_metrics")
+      .select("total_distance_m, max_speed_kmh, sprint_count")
+      .eq("session_id", sessionsWithMetrics.id);
+
+    if (cvData && cvData.length > 0) {
+      avgCvDistance = Math.round(cvData.reduce((s: number, m: any) => s + m.total_distance_m, 0) / cvData.length);
+      avgCvSpeed = cvData.reduce((s: number, m: any) => s + m.max_speed_kmh, 0) / cvData.length;
+      avgCvSprints = Math.round(cvData.reduce((s: number, m: any) => s + m.sprint_count, 0) / cvData.length);
+    }
+  }
+
   // Compute latest session wearable metrics
   if (latestSession) {
     const { data: latestMetrics } = await supabase
@@ -389,6 +407,9 @@ export default async function DashboardPage() {
         avgTeamHR={avgTeamHR}
         playersAtRisk={playersAtRisk}
         avgTrimp={avgTrimp}
+        avgDistance={avgCvDistance}
+        avgSpeed={avgCvSpeed}
+        avgSprints={avgCvSprints}
       />
 
       {/* Row 2: Charts - Session Intensity + Risk Distribution */}
