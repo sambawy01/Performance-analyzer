@@ -1,13 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { SquadBuilder } from "@/components/squad/squad-builder";
 import type { PitchPlayer } from "@/components/squad/pitch-diagram";
 import type { TacticalMetrics } from "@/types";
 
 export default async function SquadBuilderPage() {
-  const supabase = await createClient();
+  const authClient = await createClient();
+  const supabase = createAdminClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   const { data: profile } = await supabase
     .from("users")

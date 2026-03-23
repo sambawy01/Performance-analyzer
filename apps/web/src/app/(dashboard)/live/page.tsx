@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { LiveHrDashboard } from "@/components/live/live-hr-dashboard";
 import { LiveSessionSelector } from "@/components/live/live-session-selector";
 import { Radio } from "lucide-react";
@@ -9,11 +9,12 @@ interface LivePageProps {
 
 export default async function LivePage({ searchParams }: LivePageProps) {
   const params = await searchParams;
-  const supabase = await createClient();
+  const authClient = await createClient();
+  const supabase = createAdminClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   const { data: profile } = await supabase
     .from("users")

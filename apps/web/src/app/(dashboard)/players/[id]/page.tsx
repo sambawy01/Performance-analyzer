@@ -6,7 +6,7 @@ import {
   getPlayerSessions,
   getPlayerLoadHistory,
 } from "@/lib/queries/players";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerOverview } from "@/components/players/player-overview";
 import { PlayerPhysicalTrends } from "@/components/players/player-physical-trends";
@@ -25,7 +25,8 @@ export default async function PlayerProfilePage({
 }: PlayerProfilePageProps) {
   const { id } = await params;
 
-  const supabase = await createClient();
+  const authClient = await createClient();
+  const supabase = createAdminClient();
 
   const [player, sessionMetrics, loadHistory] = await Promise.all([
     getPlayerById(id),

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { StatCards } from "@/components/dashboard/stat-cards";
 import { IntensityChartWrapper } from "@/components/dashboard/intensity-chart-wrapper";
 import { RiskDonutWrapper } from "@/components/dashboard/risk-donut-wrapper";
@@ -9,10 +9,13 @@ import { DailyBriefing } from "@/components/planner/daily-briefing";
 import { LoadHeatmap } from "@/components/dashboard/load-heatmap";
 
 export default async function DashboardPage() {
-  const supabase = await createClient();
+  const authClient = await createClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
+
+  // Use admin client for all data queries (bypasses RLS, works on Vercel)
+  const supabase = createAdminClient();
 
   const { data: profile } = await supabase
     .from("users")

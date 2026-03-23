@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function getSessions(
   academyId: string,
@@ -7,7 +7,7 @@ export async function getSessions(
     type?: string;
   }
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   let query = supabase
     .from("sessions")
@@ -28,7 +28,7 @@ export async function getSessions(
 }
 
 export async function getSessionById(sessionId: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Fetch session separately — no complex joins that break with RLS
   const { data: session, error: sessError } = await supabase
@@ -59,7 +59,7 @@ export async function getSessionById(sessionId: string) {
 }
 
 export async function getSessionLoadRecords(sessionId: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data, error } = await supabase
     .from("load_records")
@@ -81,7 +81,7 @@ export async function createSession(sessionData: {
   coach_id?: string;
   notes?: string;
 }) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("sessions")
     .insert(sessionData)

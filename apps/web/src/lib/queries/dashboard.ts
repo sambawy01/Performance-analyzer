@@ -1,10 +1,10 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function getLatestSession(
   academyId: string,
   ageGroups?: string[]
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   let query = supabase
     .from("sessions")
@@ -28,7 +28,7 @@ export async function getAlerts(
   academyId: string,
   ageGroups?: string[]
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   let query = supabase
     .from("load_records")
@@ -59,7 +59,7 @@ export async function getRecentSessions(
   ageGroups?: string[],
   limit = 10
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   // Simple query without cross-table joins to avoid RLS complications
   let query = supabase
@@ -85,7 +85,7 @@ export async function getTrendData(
   ageGroups?: string[],
   days = 14
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
   const since = new Date();
   since.setDate(since.getDate() - days);
 
@@ -137,7 +137,7 @@ export async function getRiskDistribution(
   academyId: string,
   ageGroups?: string[]
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   let query = supabase
     .from("load_records")

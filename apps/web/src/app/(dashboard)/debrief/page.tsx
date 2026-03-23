@@ -1,11 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { MatchDebrief } from "@/components/debrief/match-debrief";
 
 export default async function DebriefPage() {
-  const supabase = await createClient();
+  const authClient = await createClient();
+  const supabase = createAdminClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   const { data: profile } = await supabase
     .from("users")

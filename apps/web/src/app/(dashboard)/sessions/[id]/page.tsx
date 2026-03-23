@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { getSessionById, getSessionLoadRecords } from "@/lib/queries/sessions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
@@ -25,7 +25,8 @@ export default async function SessionDetailPage({
   params,
 }: SessionDetailPageProps) {
   const { id } = await params;
-  const supabase = await createClient();
+  const authClient = await createClient();
+  const supabase = createAdminClient();
   const [session, loadRecords] = await Promise.all([
     getSessionById(id),
     getSessionLoadRecords(id),

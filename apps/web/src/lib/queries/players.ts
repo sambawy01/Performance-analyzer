@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function getPlayers(
   academyId: string,
@@ -8,7 +8,7 @@ export async function getPlayers(
     status?: string;
   }
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   let query = supabase
     .from("players")
@@ -31,7 +31,7 @@ export async function getPlayers(
 }
 
 export async function getPlayerById(playerId: string) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data } = await supabase
     .from("players")
@@ -46,7 +46,7 @@ export async function getPlayerSessions(
   playerId: string,
   limit = 20
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data } = await supabase
     .from("wearable_metrics")
@@ -67,7 +67,7 @@ export async function getPlayerLoadHistory(
   playerId: string,
   limit = 30
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data } = await supabase
     .from("load_records")
@@ -82,7 +82,7 @@ export async function getPlayerLoadHistory(
 export async function getPlayerDevelopmentSnapshots(
   playerId: string
 ) {
-  const supabase = await createClient();
+  const supabase = createAdminClient();
 
   const { data } = await supabase
     .from("development_snapshots")

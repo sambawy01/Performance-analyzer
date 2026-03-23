@@ -1,13 +1,14 @@
 import { FileText } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { ParentReportCard } from "@/components/reports/parent-report-card";
 
 export default async function ParentReportPage() {
-  const supabase = await createClient();
+  const authClient = await createClient();
+  const supabase = createAdminClient();
 
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   const { data: profile } = await supabase
     .from("users")

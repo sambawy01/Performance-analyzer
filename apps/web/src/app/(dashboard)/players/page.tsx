@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { PlayerFilters } from "@/components/players/player-filters";
 import { PlayerCard } from "@/components/players/player-card";
 
@@ -13,10 +13,11 @@ interface PlayersPageProps {
 
 export default async function PlayersPage({ searchParams }: PlayersPageProps) {
   const params = await searchParams;
-  const supabase = await createClient();
+  const authClient = await createClient();
+  const supabase = createAdminClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   const { data: profile } = await supabase
     .from("users")

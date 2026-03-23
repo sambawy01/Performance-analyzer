@@ -1,11 +1,12 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { PlayerComparison } from "@/components/compare/player-comparison";
 
 export default async function ComparePage() {
-  const supabase = await createClient();
+  const authClient = await createClient();
+  const supabase = createAdminClient();
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await authClient.auth.getUser();
 
   const { data: profile } = await supabase
     .from("users")
