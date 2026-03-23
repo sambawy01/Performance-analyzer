@@ -27,7 +27,7 @@ function computeTalentScore(
   sessionMetrics: TalentScoreProps["sessionMetrics"],
   loadHistory: TalentScoreProps["loadHistory"]
 ): { score: number; breakdown: Record<string, number> } {
-  if (sessionMetrics.length < 4) {
+  if (sessionMetrics.length < 2) {
     return { score: 0, breakdown: {} };
   }
 
@@ -39,25 +39,33 @@ function computeTalentScore(
   const avg = (arr: number[]) =>
     arr.length > 0 ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
 
-  // 1. HR Efficiency (lower avg HR over time = improving fitness) — weight 30
+  // 1. HR Efficiency — weight 30
+  // Base score from absolute efficiency + bonus for improvement
+  const avgHr = avg(sessionMetrics.map((m) => m.hr_avg));
+  const hrBaseScore = avgHr < 145 ? 20 : avgHr < 155 ? 15 : avgHr < 165 ? 10 : 5;
   const oldHr = avg(olderSessions.map((m) => m.hr_avg));
   const newHr = avg(newerSessions.map((m) => m.hr_avg));
-  const hrImprovement = oldHr > 0 ? Math.max(0, Math.min(30, ((oldHr - newHr) / oldHr) * 300)) : 0;
+  const hrTrend = oldHr > 0 ? Math.max(0, Math.min(10, ((oldHr - newHr) / oldHr) * 100)) : 5;
+  const hrImprovement = hrBaseScore + hrTrend;
 
-  // 2. TRIMP capacity (higher TRIMP over time = handling more load) — weight 25
+  // 2. TRIMP capacity — weight 25
+  const avgTrimp = avg(sessionMetrics.map((m) => m.trimp_score));
+  const trimpBaseScore = avgTrimp > 180 ? 18 : avgTrimp > 140 ? 14 : avgTrimp > 100 ? 10 : 5;
   const oldTrimp = avg(olderSessions.map((m) => m.trimp_score));
   const newTrimp = avg(newerSessions.map((m) => m.trimp_score));
-  const trimpImprovement = oldTrimp > 0 ? Math.max(0, Math.min(25, ((newTrimp - oldTrimp) / oldTrimp) * 250)) : 0;
+  const trimpTrend = oldTrimp > 0 ? Math.max(0, Math.min(7, ((newTrimp - oldTrimp) / oldTrimp) * 70)) : 3;
+  const trimpImprovement = trimpBaseScore + trimpTrend;
 
-  // 3. Recovery rate (higher hr_recovery_60s = better) — weight 20
+  // 3. Recovery rate — weight 20
   const recoveryMetrics = sessionMetrics.filter((m) => m.hr_recovery_60s !== null);
-  let recoveryScore = 10; // default mid
-  if (recoveryMetrics.length >= 4) {
-    const oldRecovery = avg(
-      recoveryMetrics.slice(Math.floor(recoveryMetrics.length / 2)).map((m) => m.hr_recovery_60s!)
-    );
+  let recoveryScore = 10;
+  if (recoveryMetrics.length >= 2) {
+    const avgRecovery = avg(recoveryMetrics.map((m) => m.hr_recovery_60s!));
+    const recoveryBase = avgRecovery > 30 ? 14 : avgRecovery > 22 ? 11 : avgRecovery > 15 ? 8 : 4;
+    const oldRecovery = avg(recoveryMetrics.slice(Math.floor(recoveryMetrics.length / 2)).map((m) => m.hr_recovery_60s!));
     const newRecovery = avg(recoveryMetrics.slice(0, Math.floor(recoveryMetrics.length / 2)).map((m) => m.hr_recovery_60s!));
-    recoveryScore = Math.max(0, Math.min(20, ((newRecovery - oldRecovery) / Math.max(oldRecovery, 1)) * 200 + 10));
+    const recoveryTrend = Math.max(0, Math.min(6, ((newRecovery - oldRecovery) / Math.max(oldRecovery, 1)) * 60));
+    recoveryScore = Math.min(20, recoveryBase + recoveryTrend);
   }
 
   // 4. Attendance consistency (sessions in last 28d vs expected 8) — weight 15
