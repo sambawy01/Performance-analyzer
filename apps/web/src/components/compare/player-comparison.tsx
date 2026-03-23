@@ -122,8 +122,23 @@ export function PlayerComparison({ players }: PlayerComparisonProps) {
     setSelectedIds(updated);
   };
 
-  // Build radar data with absolute normalization
-  const radarData = METRICS.slice(0, 6).map((m) => {
+  // Build radar data — Physical (HR/wearable)
+  const physicalMetrics = METRICS.filter((m) =>
+    ["hrAvg", "hrMax", "trimp", "recovery", "acwr", "maxSpeedKmh"].includes(m.key as string)
+  );
+  const radarData = physicalMetrics.map((m) => {
+    const point: { subject: string; [key: string]: string | number } = { subject: m.label };
+    selectedPlayers.forEach((p) => {
+      point[p.name] = normalize(p[m.key] as number | null, m.key, m.higherBetter);
+    });
+    return point;
+  });
+
+  // Build radar data — Position & Camera (CV pipeline)
+  const cvRadarMetrics = METRICS.filter((m) =>
+    ["distanceKm", "sprintCount", "hsrCount", "accelEvents", "decelEvents", "movementScore"].includes(m.key as string)
+  );
+  const cvRadarData = cvRadarMetrics.map((m) => {
     const point: { subject: string; [key: string]: string | number } = { subject: m.label };
     selectedPlayers.forEach((p) => {
       point[p.name] = normalize(p[m.key] as number | null, m.key, m.higherBetter);
@@ -283,17 +298,39 @@ export function PlayerComparison({ players }: PlayerComparisonProps) {
         })}
       </div>
 
-      {/* Radar chart */}
-      <div className="rounded-xl border border-white/[0.08] p-5"
-        style={{ background: "rgba(10,14,26,0.8)" }}>
-        <h3 className="text-sm font-semibold text-white/80 mb-4">Performance Radar</h3>
-        <ComparisonRadarWrapper
-          data={radarData}
-          playerNames={selectedPlayers.map((p) => p.name)}
-        />
-        <p className="text-xs text-white/30 text-center mt-2">
-          Values normalized 0–100 relative to selected players
-        </p>
+      {/* Dual Radar Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Physical / Wearable Radar */}
+        <div className="rounded-xl border border-white/[0.08] p-5"
+          style={{ background: "rgba(10,14,26,0.8)" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-2 w-2 rounded-full bg-[#ff3355]" style={{ boxShadow: "0 0 6px #ff335580" }} />
+            <h3 className="text-sm font-semibold text-white/80">Physical &amp; Heart Rate</h3>
+          </div>
+          <ComparisonRadarWrapper
+            data={radarData}
+            playerNames={selectedPlayers.map((p) => p.name)}
+          />
+          <p className="text-[10px] text-white/25 text-center mt-2">
+            HR · TRIMP · Recovery · ACWR · Speed
+          </p>
+        </div>
+
+        {/* Position & Camera Radar */}
+        <div className="rounded-xl border border-white/[0.08] p-5"
+          style={{ background: "rgba(10,14,26,0.8)" }}>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="h-2 w-2 rounded-full bg-[#a855f7]" style={{ boxShadow: "0 0 6px #a855f780" }} />
+            <h3 className="text-sm font-semibold text-white/80">Position &amp; Camera Data</h3>
+          </div>
+          <ComparisonRadarWrapper
+            data={cvRadarData}
+            playerNames={selectedPlayers.map((p) => p.name)}
+          />
+          <p className="text-[10px] text-white/25 text-center mt-2">
+            Distance · Sprints · HSR · Accelerations · Movement
+          </p>
+        </div>
       </div>
 
       {/* AI Compare button + output */}

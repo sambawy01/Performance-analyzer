@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { ClipboardList } from "lucide-react";
 import { SessionPlan } from "@/components/session-design/session-plan";
 
@@ -13,7 +14,9 @@ export default function SessionDesignPage() {
           Generate load-aware training sessions tailored to your squad&apos;s current state
         </p>
       </div>
-      <SessionPlan />
+      <Suspense fallback={null}>
+        <SessionPlan />
+      </Suspense>
     </div>
   );
 }

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { ClipboardList, Loader2, Sparkles, RefreshCw, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { ClipboardList, Loader2, Sparkles, RefreshCw, AlertCircle, CalendarPlus, Check } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +76,7 @@ function formatMarkdown(text: string) {
 }
 
 export function SessionPlan() {
+  const searchParams = useSearchParams();
   const [type, setType] = useState("training");
   const [playerCount, setPlayerCount] = useState("18");
   const [duration, setDuration] = useState("90");
@@ -83,6 +85,20 @@ export function SessionPlan() {
   const [plan, setPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [addedToCalendar, setAddedToCalendar] = useState(false);
+  const [addingToCalendar, setAddingToCalendar] = useState(false);
+
+  // Pre-fill from URL params (when coming from planner modal)
+  useEffect(() => {
+    const pType = searchParams.get("type");
+    const pDuration = searchParams.get("duration");
+    const pFocus = searchParams.get("focus");
+    const pIntensity = searchParams.get("intensity");
+    if (pType) setType(pType === "match" ? "match-prep" : pType);
+    if (pDuration) setDuration(pDuration);
+    if (pFocus) setFocus(pFocus.split(" ")[0].toLowerCase() || "pressing");
+    if (pIntensity) setNotes((prev) => prev || `Target intensity: ${pIntensity}`);
+  }, [searchParams]);
 
   async function designSession() {
     if (!playerCount || !duration) return;
@@ -274,10 +290,68 @@ export function SessionPlan() {
               <div className="space-y-1.5">{formatMarkdown(plan)}</div>
             </CardContent>
           </Card>
-          <ExportShareBar
-            title={`Session Plan — ${type} · ${focus} Focus`}
-            content={plan}
-          />
+          {/* Add to Calendar + Export Row */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={async () => {
+                setAddingToCalendar(true);
+                try {
+                  const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
+                  const res = await fetch("/api/sessions/create", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      date,
+                      type: type === "match-prep" ? "training" : type,
+                      duration_minutes: parseInt(duration),
+                      location: "HQ",
+                      notes: `${focus} focus — AI designed\n\n${plan?.substring(0, 500)}`,
+                    }),
+                  });
+                  if (res.ok) {
+                    setAddedToCalendar(true);
+                  }
+                } catch {
+                  // silently fail
+                } finally {
+                  setAddingToCalendar(false);
+                }
+              }}
+              disabled={addedToCalendar || addingToCalendar}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 disabled:opacity-60"
+              style={{
+                background: addedToCalendar
+                  ? "rgba(0, 255, 136, 0.15)"
+                  : "linear-gradient(135deg, #00d4ff, #a855f7)",
+                color: addedToCalendar ? "#00ff88" : "white",
+                border: addedToCalendar ? "1px solid rgba(0, 255, 136, 0.3)" : "none",
+                boxShadow: addedToCalendar
+                  ? "none"
+                  : "0 0 20px rgba(0, 212, 255, 0.2)",
+              }}
+            >
+              {addedToCalendar ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  Added to Planner
+                </>
+              ) : addingToCalendar ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <CalendarPlus className="h-4 w-4" />
+                  Add to Planner
+                </>
+              )}
+            </button>
+            <ExportShareBar
+              title={`Session Plan — ${type} · ${focus} Focus`}
+              content={plan}
+            />
+          </div>
         </>
       )}
     </div>

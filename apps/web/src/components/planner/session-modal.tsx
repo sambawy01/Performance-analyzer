@@ -16,7 +16,6 @@ import {
   Heart,
   Calendar,
   ExternalLink,
-  Pencil,
   Palette,
 } from "lucide-react";
 import {
@@ -341,6 +340,7 @@ export function SessionModal({
           {session.id && (
             <Link
               href={`/sessions/${session.id}`}
+              onClick={onClose}
               className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-all duration-200 text-[#00d4ff] bg-[#00d4ff]/10 hover:bg-[#00d4ff]/20 border border-[#00d4ff]/20 hover:border-[#00d4ff]/40"
             >
               <ExternalLink className="h-3 w-3" />
@@ -349,19 +349,12 @@ export function SessionModal({
           )}
           <Link
             href={`/session-design?${designSessionParams}`}
+            onClick={onClose}
             className="flex-1 inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-all duration-200 text-[#a855f7] bg-[#a855f7]/10 hover:bg-[#a855f7]/20 border border-[#a855f7]/20 hover:border-[#a855f7]/40"
           >
             <Palette className="h-3 w-3" />
             Design Session
           </Link>
-          <button
-            className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-lg transition-all duration-200 text-white/40 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] hover:border-white/[0.15] cursor-not-allowed"
-            disabled
-            title="Coming soon"
-          >
-            <Pencil className="h-3 w-3" />
-            Edit
-          </button>
         </div>
       </div>
     </div>
