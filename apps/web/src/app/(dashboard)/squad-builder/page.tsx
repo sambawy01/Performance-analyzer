@@ -18,12 +18,13 @@ export default async function SquadBuilderPage() {
 
   if (!profile) return null;
 
-  // Fetch all active players
+  // Fetch U16 active players (main squad with wearable data)
   const { data: playersRaw } = await supabase
     .from("players")
-    .select("id, name, position, jersey_number, status")
+    .select("id, name, position, jersey_number, status, age_group")
     .eq("academy_id", profile.academy_id)
     .eq("status", "active")
+    .eq("age_group", "2010")
     .order("jersey_number", { ascending: true });
 
   const playerList = playersRaw ?? [];
