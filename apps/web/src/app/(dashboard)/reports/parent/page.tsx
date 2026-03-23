@@ -1,20 +1,25 @@
 import { FileText } from "lucide-react";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { ParentReportCard } from "@/components/reports/parent-report-card";
+import { redirect } from "next/navigation";
 
 export default async function ParentReportPage() {
   const authClient = await createClient();
-  const supabase = createAdminClient();
-
   const {
     data: { user },
   } = await authClient.auth.getUser();
+
+  if (!user) redirect("/login");
+
+  const supabase = createAdminClient();
 
   const { data: profile } = await supabase
     .from("users")
     .select("academy_id")
     .eq("auth_user_id", user!.id)
     .single();
+
+  if (!profile) redirect("/login");
 
   const { data: players } = await supabase
     .from("players")
@@ -35,8 +40,8 @@ export default async function ParentReportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <FileText className="h-6 w-6 text-[#4f46e5]" />
+        <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+          <FileText className="h-6 w-6 text-[#a855f7]" />
           Parent Report Generator
         </h2>
         <p className="text-sm text-white/50 mt-1">

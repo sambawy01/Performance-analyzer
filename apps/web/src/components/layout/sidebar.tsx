@@ -31,7 +31,7 @@ const navItems = [
   { href: "/session-design", label: "Session Design", icon: ClipboardList, roles: ["coach", "analyst", "director"] },
   { href: "/compare", label: "Compare", icon: GitCompare, roles: ["coach", "analyst", "director"] },
   { href: "/debrief", label: "Debrief", icon: FileBarChart, roles: ["coach", "analyst", "director"] },
-  { href: "/reports/parent", label: "Reports", icon: FileText, roles: ["coach", "analyst", "director"] },
+  { href: "/reports", label: "Reports", icon: FileText, roles: ["coach", "analyst", "director"] },
   { href: "/live", label: "Live HR", icon: Radio, roles: ["coach", "analyst", "director"], isLive: true },
   { href: "/admin/users", label: "Users", icon: Settings, roles: ["director"] },
 ];
