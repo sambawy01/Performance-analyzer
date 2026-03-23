@@ -8,6 +8,7 @@ import { SessionPlayersTab } from "@/components/sessions/session-players-tab";
 import { SessionTacticalTab } from "@/components/sessions/session-tactical-tab";
 import { SessionVideoTab } from "@/components/sessions/session-video-tab";
 import { SessionAiReportTab } from "@/components/sessions/session-ai-report-tab";
+import { SessionHeatmap } from "@/components/sessions/session-heatmap";
 import {
   formatDate,
   ageGroupLabel,
@@ -131,6 +132,7 @@ export default async function SessionDetailPage({
             Players ({(session.wearable_metrics as any[])?.length ?? 0})
           </TabsTrigger>
           <TabsTrigger value="tactical">Tactical</TabsTrigger>
+          <TabsTrigger value="heatmap">Heatmap</TabsTrigger>
           <TabsTrigger value="video">Video</TabsTrigger>
           <TabsTrigger value="ai-report">AI Report</TabsTrigger>
         </TabsList>
@@ -154,6 +156,10 @@ export default async function SessionDetailPage({
 
         <TabsContent value="tactical">
           <SessionTacticalTab tactical={tactical as any} history={tactHistory} />
+        </TabsContent>
+
+        <TabsContent value="heatmap">
+          <SessionHeatmap cvMetrics={(cvMetrics as any[]) ?? []} />
         </TabsContent>
 
         <TabsContent value="video">
