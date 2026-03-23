@@ -19,6 +19,7 @@ import {
   X,
   GitCompare,
   FileBarChart,
+  HeartPulse,
 } from "lucide-react";
 
 const navItems = [
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/sessions", label: "Sessions", icon: CalendarDays, roles: ["coach", "analyst", "director"] },
   { href: "/players", label: "Players", icon: Users, roles: ["coach", "analyst", "director"] },
   { href: "/planner", label: "Planner", icon: CalendarClock, roles: ["coach", "analyst", "director"] },
+  { href: "/match-readiness", label: "Match Readiness", icon: HeartPulse, roles: ["coach", "analyst", "director"] },
   { href: "/squad-builder", label: "Squad Builder", icon: ShieldHalf, roles: ["coach", "analyst", "director"] },
   { href: "/scout", label: "Scout", icon: Target, roles: ["coach", "analyst", "director"] },
   { href: "/session-design", label: "Session Design", icon: ClipboardList, roles: ["coach", "analyst", "director"] },

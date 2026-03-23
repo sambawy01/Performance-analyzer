@@ -16,6 +16,7 @@ import { AiReportChat } from "@/components/ai/ai-report-chat";
 import { TalentScore } from "@/components/players/talent-score";
 import { InjuryRiskPanel } from "@/components/players/injury-risk-panel";
 import { PlayerCvStats } from "@/components/players/player-cv-stats";
+import { PlayerProgressTimeline } from "@/components/players/player-progress-timeline";
 
 interface PlayerProfilePageProps {
   params: Promise<{ id: string }>;
@@ -65,6 +66,54 @@ export default async function PlayerProfilePage({
     session: cvSessionMap.get(m.session_id) ?? null,
   }));
 
+  // Fetch data for Progress Timeline (last 30 sessions with wearable + CV metrics)
+  const { data: progressWearable } = await supabase
+    .from("wearable_metrics")
+    .select("session_id, trimp_score, hr_recovery_60s")
+    .eq("player_id", id)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  const { data: progressCv } = await supabase
+    .from("cv_metrics")
+    .select("session_id, max_speed_kmh, sprint_count")
+    .eq("player_id", id)
+    .order("created_at", { ascending: false })
+    .limit(30);
+
+  // Get session dates for progress data
+  const progressSessionIds = [
+    ...new Set([
+      ...(progressWearable ?? []).map((m: any) => m.session_id),
+      ...(progressCv ?? []).map((m: any) => m.session_id),
+    ]),
+  ].filter(Boolean);
+  const { data: progressSessions } = progressSessionIds.length > 0
+    ? await supabase.from("sessions").select("id, date").in("id", progressSessionIds)
+    : { data: [] };
+  const progressSessionMap = new Map((progressSessions ?? []).map((s: any) => [s.id, s]));
+
+  // Merge wearable and CV data by session
+  const wearableBySession = new Map((progressWearable ?? []).map((m: any) => [m.session_id, m]));
+  const cvBySession = new Map((progressCv ?? []).map((m: any) => [m.session_id, m]));
+
+  const progressData = progressSessionIds
+    .map((sid: string) => {
+      const session = progressSessionMap.get(sid);
+      const wm = wearableBySession.get(sid);
+      const cm = cvBySession.get(sid);
+      if (!session?.date) return null;
+      return {
+        date: session.date,
+        trimp: wm?.trimp_score ?? 0,
+        hrRecovery: wm?.hr_recovery_60s ?? null,
+        maxSpeed: cm?.max_speed_kmh ?? null,
+        sprintCount: cm?.sprint_count ?? null,
+      };
+    })
+    .filter(Boolean)
+    .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   if (!player) {
     notFound();
   }
@@ -91,6 +140,13 @@ export default async function PlayerProfilePage({
         player={player as any}
         latestLoad={latestLoad as any}
         sessionCount={recentSessionCount}
+      />
+
+      {/* Player Progress Timeline */}
+      <PlayerProgressTimeline
+        playerId={id}
+        playerName={player.name}
+        progressData={progressData as any}
       />
 
       {/* Enhanced Injury Risk Panel */}
