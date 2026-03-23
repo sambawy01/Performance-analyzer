@@ -82,14 +82,14 @@ export function Sidebar({ role }: { role: string }) {
   return (
     <>
       {/* Desktop sidebar — hidden on mobile */}
-      <aside className="hidden lg:block w-64 border-r border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-4 shrink-0">
+      <aside className="hidden md:block w-64 border-r border-white/[0.06] bg-white/[0.02] backdrop-blur-xl p-4 shrink-0">
         <NavContent role={role} />
       </aside>
 
       {/* Mobile hamburger button — visible on mobile only */}
       <button
         onClick={() => setMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-[997] h-10 w-10 rounded-lg bg-white/[0.06] backdrop-blur-xl border border-white/[0.1] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
+        className="md:hidden fixed top-4 left-4 z-[997] h-10 w-10 rounded-lg bg-white/[0.06] backdrop-blur-xl border border-white/[0.1] flex items-center justify-center text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -99,11 +99,11 @@ export function Sidebar({ role }: { role: string }) {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black/50 z-[998] lg:hidden"
+            className="fixed inset-0 bg-black/50 z-[998] md:hidden"
             onClick={() => setMobileOpen(false)}
           />
           {/* Drawer */}
-          <div className="fixed inset-y-0 left-0 w-72 z-[999] lg:hidden bg-[#0a0e1a]/98 backdrop-blur-xl border-r border-white/[0.08] p-4 shadow-[0_0_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-left duration-300">
+          <div className="fixed inset-y-0 left-0 w-72 z-[999] md:hidden bg-[#0a0e1a]/98 backdrop-blur-xl border-r border-white/[0.08] p-4 shadow-[0_0_40px_rgba(0,0,0,0.5)] animate-in slide-in-from-left duration-300">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h1 className="text-lg font-bold text-gradient tracking-tight">Coach M8</h1>

@@ -16,7 +16,7 @@ export function Header({ user }: { user: User }) {
   }
 
   return (
-    <header className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-xl px-6 py-3 pl-16 lg:pl-6">
+    <header className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] backdrop-blur-xl px-6 py-3 pl-16 md:pl-6">
       <div />
       <div className="flex items-center gap-4">
         <span className="text-sm text-white/60">
