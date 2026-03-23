@@ -6,78 +6,102 @@ import { buildFullContext } from "@/lib/ai/build-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const SCOUT_SYSTEM_PROMPT = `You are an elite football intelligence analyst at Coach M8. You specialize in opponent analysis and pre-match scouting reports for youth football academies in Egypt and the Middle East.
+const SCOUT_SYSTEM_PROMPT = `You are an elite football intelligence analyst at Coach M8. You specialize in opponent analysis and pre-match scouting reports for football academies in Egypt and the Middle East.
 
-Your job: research and analyze the OPPONENT — their tactics, formation, key players, strengths, weaknesses, and recent form. Then recommend how YOUR team should play against them.
+Your job: use web search to research the OPPONENT thoroughly — their tactics, formation, key players, strengths, weaknesses, recent results, and form. Then recommend how the coaching team should prepare against them.
 
-You receive two inputs:
-1. Web research about the opponent (news, results, tactical analysis)
-2. Your own team's current squad data
+You have access to web search. USE IT EXTENSIVELY. Search for:
+1. The opponent's recent match results and scores
+2. Their squad/roster and key players
+3. Their formation and tactical style
+4. Their head coach and philosophy
+5. Any news, injuries, or transfers
+6. Their youth academy if it's a youth match
 
-Write like a professional scout delivering a comprehensive dossier to the head coach before a crucial match. Be specific, data-driven, and decisive. If web research provides specific names, formations, or results — USE THEM. If information is limited, extrapolate from what's available and clearly state assumptions.`;
+Search in both English and Arabic if relevant. Be thorough — run multiple searches to build a complete picture.
 
-async function searchOpponent(opponent: string): Promise<string> {
-  // Use web search to gather opponent intelligence
-  const queries = [
-    `${opponent} football team latest results lineup`,
-    `${opponent} youth football Egypt formation tactics`,
-    `${opponent} football squad players`,
-  ];
+Write like a professional scout delivering a comprehensive dossier. Every claim should be backed by what you found online. If you cannot find specific information, say so clearly rather than guessing.`;
 
-  let research = "";
+async function searchOpponentWithWebSearch(opponent: string, matchDate: string, squadContext: string): Promise<string> {
+  // Use Claude with web_search tool for real-time research
+  const response = await anthropic.messages.create({
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 8000,
+    system: SCOUT_SYSTEM_PROMPT,
+    tools: [
+      {
+        type: "web_search_20250305",
+        name: "web_search",
+        max_uses: 10,
+      } as any,
+    ],
+    messages: [
+      {
+        role: "user",
+        content: `Research the football team/club "${opponent}" thoroughly using web search, then generate a comprehensive OPPONENT SCOUT REPORT for our match on ${matchDate}.
 
-  for (const query of queries) {
-    try {
-      const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-      const res = await fetch(
-        `https://api.anthropic.com/v1/messages`,
-        {
-          method: "POST",
-          headers: {
-            "x-api-key": process.env.ANTHROPIC_API_KEY!,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "claude-sonnet-4-20250514",
-            max_tokens: 800,
-            messages: [
-              {
-                role: "user",
-                content: `You are a football research assistant. Based on your knowledge, provide any information you have about this football team/club: "${opponent}".
+STEP 1: Search for information about ${opponent}. Run multiple searches:
+- "${opponent} football results 2025 2026"
+- "${opponent} squad roster players"
+- "${opponent} formation tactics playing style"
+- "${opponent} coach manager"
+- "${opponent} youth academy" (if youth match)
+- Try Arabic searches too: "${opponent} كرة القدم نتائج"
 
-Include if known:
-- Full official name, city, country
-- League/division they play in
-- Recent results and form
-- Typical formation and playing style
-- Notable players (especially youth/academy level)
-- Head coach
-- Strengths and weaknesses
-- Stadium/home ground
-- Any relevant news
+STEP 2: After gathering research, write the full report using this structure:
 
-If this is a youth team (U16, U18, etc.), focus on the academy and youth development program. If you have limited information, provide what you can and note what's uncertain. This is for an Egyptian youth football context.`,
-              },
-            ],
-          }),
-        }
-      );
+=== OUR SQUAD DATA (for tactical recommendations) ===
+${squadContext.substring(0, 3000)}
 
-      if (res.ok) {
-        const data = await res.json();
-        const text = data.content?.find((b: any) => b.type === "text")?.text;
-        if (text) {
-          research += `\n--- Research on "${opponent}" ---\n${text}\n`;
-          break; // One good research call is enough
-        }
-      }
-    } catch {
-      // Continue with next query
+Write the report with these sections (use ## headers):
+
+## Opponent Profile
+Full official name, city, country, league/division. Founded. Stadium. Current head coach. Recent season standing.
+
+## Recent Form & Results
+Last 5-10 matches with scores, dates, and opponents. Win/draw/loss record. Goals scored and conceded. Home vs away form. Current league position.
+
+## Formation & Playing Style
+Primary formation. Build-up play style (short/long/mixed). Pressing approach (high/mid/low). Defensive structure. Transition speed. Width usage. Set piece approach.
+
+## Key Players to Watch
+4-6 most dangerous players with: name, position, age, key stats if available, what makes them dangerous, specific instructions on how to neutralize each one.
+
+## Strengths
+3-5 specific tactical strengths. What they do well. Patterns of play that lead to goals. Set piece threat level.
+
+## Weaknesses & Vulnerabilities
+3-5 exploitable weaknesses. Defensive gaps. Areas on the pitch where they're vulnerable. Patterns that can be exploited.
+
+## How to Beat Them — Tactical Game Plan
+Recommended formation for US against their system. Specific pressing triggers. Where to exploit space. Build-up strategy. Key matchups. How to handle their strengths.
+
+## Recommended Starting XI vs ${opponent}
+Our best 11 for THIS specific matchup. Position, name (#number), and WHY they're selected against this opponent.
+
+## Set Piece Plan
+Attacking corners/free kicks: takers and targets. Defensive set pieces: marking assignments.
+
+## Plan B — In-Game Adjustments
+0-0 at 60 minutes, 1-0 down, and leading scenarios with specific substitutions.
+
+## Risk Assessment
+Match difficulty (1-10). Key risk factors. Load management notes.
+
+Be comprehensive. Cite your web search findings. This is a professional scouting dossier.`,
+      },
+    ],
+  });
+
+  // Extract all text blocks from the response
+  const textParts: string[] = [];
+  for (const block of response.content) {
+    if (block.type === "text") {
+      textParts.push(block.text);
     }
   }
 
-  return research || `Limited information available about ${opponent}. Analysis will be based on general tactical principles for this level of competition.`;
+  return textParts.join("\n\n") || "Unable to generate scout report.";
 }
 
 export async function POST(request: NextRequest) {
@@ -131,67 +155,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Run opponent research and squad context fetch in parallel
-    const [opponentResearch, squadContext] = await Promise.all([
-      searchOpponent(opponent),
-      buildFullContext(profile.academy_id),
-    ]);
+    // Get squad context
+    const squadContext = await buildFullContext(profile.academy_id);
 
-    const prompt = `Generate a comprehensive OPPONENT SCOUT REPORT for our match vs **${opponent}** on ${matchDate}.
-
-=== OPPONENT INTELLIGENCE ===
-${opponentResearch}
-
-=== OUR SQUAD DATA ===
-${squadContext}
-
-Write a detailed opponent analysis with these sections (use ## headers):
-
-## Opponent Profile
-Full name, league, city. Recent form (last 5 results if known). Head coach. Overall squad strength rating.
-
-## Formation & Playing Style
-Their typical formation (e.g., 4-3-3, 3-5-2). How they build up play. Pressing style (high/mid/low block). Transition speed. Set piece tendencies.
-
-## Key Players to Watch
-3-5 of their most dangerous players. For each: name, position, number if known, what makes them dangerous, how to neutralize them.
-
-## Strengths
-What they do well. Specific tactical patterns that make them effective. Where they're most dangerous on the pitch.
-
-## Weaknesses & Vulnerabilities
-Where they can be exploited. Defensive gaps, tactical weaknesses, known problem areas. Be specific about zones on the pitch.
-
-## Recent Form & Results
-Last 5 matches if available. Win/loss patterns. Goals scored/conceded trends. Home vs away performance.
-
-## How to Beat Them — Tactical Game Plan
-Recommended formation for US. Specific tactical instructions. Where to press, where to exploit space. Build-up strategy. Which of our players match up best against their key threats.
-
-## Recommended Starting XI vs ${opponent}
-Our best 11 for THIS specific matchup. For each player: position, name (#number), and WHY they start against this opponent specifically (not generic reasons).
-
-## Set Piece Plan
-Attacking set pieces: who takes, who attacks. Defensive set pieces: marking assignments against their aerial threats.
-
-## Plan B — In-Game Adjustments
-If 0-0 at 60': what changes. If 1-0 down: emergency response. If leading: how to protect the lead. Name specific substitutions.
-
-## Risk Assessment
-Overall match difficulty rating (1-10). Key risk factors. Players on our side who need load management and minute restrictions.
-
-Be comprehensive and specific. This is a professional scouting dossier, not a summary. The head coach should be able to walk into the dressing room and brief the entire squad from this document.`;
-
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 4000,
-      system: SCOUT_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: prompt }],
-    });
-
-    const textBlock = response.content.find((b) => b.type === "text");
-    const report =
-      textBlock?.text ?? "Unable to generate scout report.";
+    // Run web search + report generation in a single Claude call with web_search tool
+    const report = await searchOpponentWithWebSearch(opponent, matchDate, squadContext);
 
     return NextResponse.json({ report });
   } catch (error) {
