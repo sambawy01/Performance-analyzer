@@ -274,11 +274,44 @@ export default async function DashboardPage() {
     }
   }
 
-  // Team readiness — simple heuristic: 100 - (risk players * 10), min 30
+  // Team readiness — smarter heuristic
   const teamReadiness = Math.max(
     30,
-    100 - briefingPlayersAtRisk.length * 10
+    100 - briefingPlayersAtRisk.filter(p => p.riskFlag === "red").length * 15
+        - briefingPlayersAtRisk.filter(p => p.riskFlag === "amber").length * 8
   );
+
+  // Additional briefing stats
+  const totalSessionsMonth = sessions.length;
+  const matchesThisMonth = sessions.filter((s: any) => s.type === "match" || s.type === "friendly").length;
+  const nextMatch = sessions.find((s: any) => (s.type === "match" || s.type === "friendly") && s.date >= todayStr);
+
+  // Weekly load trend
+  const last7 = heatmapDays.slice(-7).filter(d => d.avgTrimp != null);
+  const prev7 = heatmapDays.slice(-14, -7).filter(d => d.avgTrimp != null);
+  const weekAvgTrimp = last7.length > 0 ? Math.round(last7.reduce((s, d) => s + (d.avgTrimp ?? 0), 0) / last7.length) : null;
+  const prevWeekAvgTrimp = prev7.length > 0 ? Math.round(prev7.reduce((s, d) => s + (d.avgTrimp ?? 0), 0) / prev7.length) : null;
+  const loadTrend = weekAvgTrimp && prevWeekAvgTrimp
+    ? Math.round(((weekAvgTrimp - prevWeekAvgTrimp) / prevWeekAvgTrimp) * 100)
+    : null;
+
+  // Upcoming sessions (next 3 days)
+  const upcoming: { date: string; type: string; notes: string | null }[] = [];
+  for (let i = 1; i <= 3; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() + i);
+    const dateStr = d.toISOString().split("T")[0];
+    const sess = sessions.find((s: any) => s.date === dateStr);
+    if (sess) {
+      upcoming.push({ date: dateStr, type: (sess as any).type, notes: (sess as any).notes });
+    }
+  }
+
+  // Top performer from latest session
+  const latestMetricsForBriefing = sessionsWithMetrics?.wearable_metrics ?? [];
+  const topPerformer = latestMetricsForBriefing.length > 0
+    ? [...latestMetricsForBriefing].sort((a: any, b: any) => b.trimp_score - a.trimp_score)[0] as any
+    : null;
 
   // Chart data: daily candlestick (merge multiple sessions per day, fill all 14 days)
   // 1. Group all metrics by date
@@ -332,6 +365,14 @@ export default async function DashboardPage() {
         todaySession={todaySession}
         playersAtRisk={briefingPlayersAtRisk}
         teamReadiness={teamReadiness}
+        totalPlayers={totalPlayers ?? 0}
+        totalSessions={totalSessionsMonth}
+        matchesThisMonth={matchesThisMonth}
+        nextMatch={nextMatch ? { date: (nextMatch as any).date, notes: (nextMatch as any).notes } : null}
+        weekAvgTrimp={weekAvgTrimp}
+        loadTrend={loadTrend}
+        upcoming={upcoming}
+        topPerformer={topPerformer ? { name: topPerformer.players?.name ?? "Unknown", jersey: topPerformer.players?.jersey_number ?? 0, trimp: Math.round(topPerformer.trimp_score) } : null}
       />
 
       {/* Stat Cards */}

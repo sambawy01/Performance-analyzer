@@ -2,40 +2,30 @@
 
 import { useState } from "react";
 import {
-  Sparkles,
-  Clock,
-  AlertTriangle,
-  Target,
-  Activity,
-  Loader2,
-  Dumbbell,
-  Moon,
-  Brain,
-  Send,
-  MessageSquare,
-  ChevronDown,
-  ChevronUp,
-  Calendar,
-  Shield,
-  Zap,
+  Sparkles, Clock, AlertTriangle, Target, Activity, Loader2,
+  Dumbbell, Moon, Brain, Send, MessageSquare, Calendar,
+  Shield, Zap, TrendingUp, TrendingDown, Minus, Trophy,
+  Users, ChevronRight, Star,
 } from "lucide-react";
 import type { Session } from "@/types";
 
 interface DailyBriefingProps {
   todaySession: Session | null;
-  playersAtRisk: Array<{
-    jerseyNumber: number;
-    name: string;
-    acwr: number;
-    riskFlag: string;
-  }>;
+  playersAtRisk: Array<{ jerseyNumber: number; name: string; acwr: number; riskFlag: string }>;
   teamReadiness: number | null;
+  totalPlayers: number;
+  totalSessions: number;
+  matchesThisMonth: number;
+  nextMatch: { date: string; notes: string | null } | null;
+  weekAvgTrimp: number | null;
+  loadTrend: number | null;
+  upcoming: Array<{ date: string; type: string; notes: string | null }>;
+  topPerformer: { name: string; jersey: number; trimp: number } | null;
 }
 
 export function DailyBriefing({
-  todaySession,
-  playersAtRisk,
-  teamReadiness,
+  todaySession, playersAtRisk, teamReadiness, totalPlayers, totalSessions,
+  matchesThisMonth, nextMatch, weekAvgTrimp, loadTrend, upcoming, topPerformer,
 }: DailyBriefingProps) {
   const [askOpen, setAskOpen] = useState(false);
   const [question, setQuestion] = useState("");
@@ -45,23 +35,16 @@ export function DailyBriefing({
   const redPlayers = playersAtRisk.filter((p) => p.riskFlag === "red");
   const amberPlayers = playersAtRisk.filter((p) => p.riskFlag === "amber");
 
-  const readinessColor =
-    teamReadiness !== null
-      ? teamReadiness >= 80
-        ? "#00ff88"
-        : teamReadiness >= 60
-          ? "#ff6b35"
-          : "#ff3355"
-      : "#94a3b8";
+  const readinessColor = teamReadiness !== null
+    ? teamReadiness >= 80 ? "#00ff88" : teamReadiness >= 60 ? "#ff6b35" : "#ff3355"
+    : "#94a3b8";
 
-  const readinessLabel =
-    teamReadiness !== null
-      ? teamReadiness >= 80
-        ? "High — ready for intensity"
-        : teamReadiness >= 60
-          ? "Moderate — control the intensity"
-          : "Low — consider lighter session"
-      : "Calculating...";
+  const trendIcon = loadTrend !== null
+    ? loadTrend > 5 ? TrendingUp : loadTrend < -5 ? TrendingDown : Minus
+    : Minus;
+  const trendColor = loadTrend !== null
+    ? loadTrend > 10 ? "text-[#ff3355]" : loadTrend > 5 ? "text-[#ff6b35]" : loadTrend < -5 ? "text-[#00d4ff]" : "text-[#00ff88]"
+    : "text-white/40";
 
   async function askAI() {
     if (!question.trim() || aiLoading) return;
@@ -73,17 +56,19 @@ export function DailyBriefing({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [{ role: "user", content: question }],
-          context: `Daily briefing context: Today's date is ${new Date().toLocaleDateString()}. ${todaySession ? `Today's session: ${todaySession.type} at ${todaySession.location}, ${todaySession.duration_minutes} min.` : "No session today."} ${redPlayers.length} players in red zone, ${amberPlayers.length} in amber. Team readiness: ${teamReadiness}/100.`,
+          context: "",
         }),
       });
       const data = await res.json();
       setAiAnswer(data.reply);
     } catch {
-      setAiAnswer("Failed to get response. Check your connection.");
+      setAiAnswer("Failed to get response.");
     } finally {
       setAiLoading(false);
     }
   }
+
+  const daysUntilMatch = nextMatch ? Math.ceil((new Date(nextMatch.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
 
   return (
     <div className="rounded-xl overflow-hidden border border-[#a855f7]/20" style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(0,212,255,0.04) 50%, rgba(0,255,136,0.04) 100%)" }}>
@@ -100,52 +85,35 @@ export function DailyBriefing({
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setAskOpen(!askOpen)}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-[#a855f7] to-[#00d4ff] text-white text-sm font-medium hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all"
-        >
+        <button onClick={() => setAskOpen(!askOpen)} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-[#a855f7] to-[#00d4ff] text-white text-sm font-medium hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all">
           <MessageSquare className="h-4 w-4" />
           Ask Coach M8
         </button>
       </div>
 
-      {/* Body */}
-      <div className="p-5">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+      <div className="p-5 space-y-5">
+        {/* Row 1: Today + Readiness + Next Match + Load Trend */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Today's Session */}
           <div className="flex items-start gap-3">
             <div className="p-2.5 rounded-lg bg-[#00d4ff]/10 shrink-0">
-              {todaySession ? (
-                <Dumbbell className="h-5 w-5 text-[#00d4ff]" />
-              ) : (
-                <Moon className="h-5 w-5 text-white/40" />
-              )}
+              {todaySession ? <Dumbbell className="h-5 w-5 text-[#00d4ff]" /> : <Moon className="h-5 w-5 text-white/40" />}
             </div>
             <div>
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">
-                Today
-              </p>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Today</p>
               {todaySession ? (
                 <>
-                  <p className="text-base font-semibold text-white capitalize">
-                    {todaySession.type} Session
-                  </p>
-                  <div className="flex items-center gap-3 mt-1 text-sm text-white/60">
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      {todaySession.duration_minutes} min
-                    </span>
+                  <p className="text-base font-semibold text-white capitalize">{todaySession.type} Session</p>
+                  <div className="flex items-center gap-2 mt-0.5 text-sm text-white/60">
+                    <Clock className="h-3 w-3" />
+                    <span className="font-mono">{todaySession.duration_minutes} min</span>
+                    <span className="text-white/30">|</span>
                     <span>{todaySession.location}</span>
                   </div>
-                  {todaySession.notes && (
-                    <p className="text-sm text-white/50 mt-1 italic">{todaySession.notes}</p>
-                  )}
+                  {todaySession.notes && <p className="text-xs text-white/40 mt-1 italic line-clamp-2">{todaySession.notes}</p>}
                 </>
               ) : (
-                <>
-                  <p className="text-base font-semibold text-white/60">Rest Day</p>
-                  <p className="text-sm text-white/40 mt-1">No session scheduled — recovery opportunity</p>
-                </>
+                <p className="text-base font-semibold text-white/50">Rest Day</p>
               )}
             </div>
           </div>
@@ -156,94 +124,160 @@ export function DailyBriefing({
               <Activity className="h-5 w-5" style={{ color: readinessColor }} />
             </div>
             <div className="flex-1">
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">
-                Team Readiness
-              </p>
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-2xl font-bold" style={{ color: readinessColor }}>
-                  {teamReadiness ?? "—"}
-                </span>
-                <span className="text-sm text-white/60">/100</span>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Team Readiness</p>
+              <div className="flex items-baseline gap-1">
+                <span className="font-mono text-2xl font-bold" style={{ color: readinessColor }}>{teamReadiness ?? "—"}</span>
+                <span className="text-sm text-white/40">/100</span>
               </div>
-              <div className="w-full h-2 rounded-full bg-white/[0.06] overflow-hidden mt-2">
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${teamReadiness ?? 0}%`,
-                    backgroundColor: readinessColor,
-                    boxShadow: `0 0 10px ${readinessColor}60`,
-                  }}
-                />
+              <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden mt-1">
+                <div className="h-full rounded-full" style={{ width: `${teamReadiness ?? 0}%`, backgroundColor: readinessColor, boxShadow: `0 0 8px ${readinessColor}60` }} />
               </div>
-              <p className="text-xs text-white/50 mt-1">{readinessLabel}</p>
             </div>
           </div>
 
-          {/* Players at Risk */}
+          {/* Next Match Countdown */}
           <div className="flex items-start gap-3">
-            <div className="p-2.5 rounded-lg bg-[#ff3355]/10 shrink-0">
-              <AlertTriangle className="h-5 w-5 text-[#ff3355]" />
+            <div className="p-2.5 rounded-lg bg-[#a855f7]/10 shrink-0">
+              <Calendar className="h-5 w-5 text-[#a855f7]" />
             </div>
-            <div className="flex-1">
-              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">
-                Watch List
-              </p>
-              {playersAtRisk.length === 0 ? (
-                <p className="text-base font-semibold text-[#00ff88]">All clear</p>
+            <div>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Next Match</p>
+              {nextMatch ? (
+                <>
+                  <p className="text-base font-semibold text-white">
+                    {daysUntilMatch === 0 ? "Today!" : daysUntilMatch === 1 ? "Tomorrow" : `In ${daysUntilMatch} days`}
+                  </p>
+                  <p className="text-xs text-white/50 mt-0.5">
+                    {new Date(nextMatch.date).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}
+                  </p>
+                  {nextMatch.notes && <p className="text-xs text-white/40 italic mt-0.5 line-clamp-1">{nextMatch.notes}</p>}
+                </>
               ) : (
-                <div className="space-y-1.5">
-                  {playersAtRisk.slice(0, 4).map((p) => (
-                    <div key={p.jerseyNumber} className="flex items-center justify-between">
-                      <span className="text-sm text-white/70">
-                        #{p.jerseyNumber} {p.name}
-                      </span>
-                      <span
-                        className="font-mono text-sm font-bold"
-                        style={{ color: p.riskFlag === "red" ? "#ff3355" : "#ff6b35" }}
-                      >
-                        {p.acwr.toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                  {playersAtRisk.length > 4 && (
-                    <p className="text-xs text-white/40">+{playersAtRisk.length - 4} more</p>
-                  )}
+                <p className="text-sm text-white/40">No match scheduled</p>
+              )}
+            </div>
+          </div>
+
+          {/* Weekly Load Trend */}
+          <div className="flex items-start gap-3">
+            <div className="p-2.5 rounded-lg bg-white/[0.04] shrink-0">
+              <Zap className="h-5 w-5 text-[#ff6b35]" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Weekly Load</p>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xl font-bold text-white">{weekAvgTrimp ?? "—"}</span>
+                <span className="text-xs text-white/40">avg TRIMP</span>
+              </div>
+              {loadTrend !== null && (
+                <div className={`flex items-center gap-1 mt-0.5 text-xs ${trendColor}`}>
+                  {(() => { const Icon = trendIcon; return <Icon className="h-3 w-3" />; })()}
+                  <span className="font-mono">{loadTrend > 0 ? "+" : ""}{loadTrend}% vs last week</span>
                 </div>
               )}
             </div>
           </div>
         </div>
 
-        {/* AI Quick Tips */}
-        <div className="mt-4 pt-4 border-t border-white/[0.06]">
-          <div className="flex items-center gap-2 mb-2">
-            <Sparkles className="h-4 w-4 text-[#a855f7]" />
-            <span className="text-xs font-semibold uppercase tracking-wider text-[#a855f7]/70">AI Insights</span>
+        {/* Row 2: Quick Stats Bar */}
+        <div className="flex flex-wrap gap-3">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+            <Users className="h-3.5 w-3.5 text-[#00d4ff]" />
+            <span className="text-xs text-white/60"><span className="font-mono font-bold text-white">{totalPlayers}</span> players</span>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            {redPlayers.length > 0 && (
-              <div className="flex items-start gap-2 text-sm text-white/70 bg-[#ff3355]/5 rounded-lg p-2.5 border border-[#ff3355]/10">
-                <Shield className="h-4 w-4 text-[#ff3355] shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-[#ff3355]">{redPlayers.length} player{redPlayers.length > 1 ? "s" : ""} in danger zone</strong> — rest {redPlayers.map(p => `#${p.jerseyNumber}`).join(", ")} today or risk injury.
-                </span>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+            <Calendar className="h-3.5 w-3.5 text-[#00ff88]" />
+            <span className="text-xs text-white/60"><span className="font-mono font-bold text-white">{totalSessions}</span> sessions this month</span>
+          </div>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.06]">
+            <Trophy className="h-3.5 w-3.5 text-[#a855f7]" />
+            <span className="text-xs text-white/60"><span className="font-mono font-bold text-white">{matchesThisMonth}</span> matches</span>
+          </div>
+          {topPerformer && (
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#00ff88]/5 border border-[#00ff88]/10">
+              <Star className="h-3.5 w-3.5 text-[#00ff88]" />
+              <span className="text-xs text-white/60">Top: <span className="font-bold text-[#00ff88]">#{topPerformer.jersey} {topPerformer.name}</span> (TRIMP {topPerformer.trimp})</span>
+            </div>
+          )}
+        </div>
+
+        {/* Row 3: Watch List + Upcoming + AI Insights — 3 columns */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Watch List */}
+          <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertTriangle className="h-4 w-4 text-[#ff3355]" />
+              <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">Watch List</span>
+            </div>
+            {playersAtRisk.length === 0 ? (
+              <div className="flex items-center gap-2 py-2">
+                <Shield className="h-4 w-4 text-[#00ff88]" />
+                <span className="text-sm text-[#00ff88] font-medium">All players in safe zone</span>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {playersAtRisk.slice(0, 5).map((p) => (
+                  <div key={p.jerseyNumber} className="flex items-center justify-between text-sm">
+                    <span className="text-white/70">#{p.jerseyNumber} {p.name}</span>
+                    <span className="font-mono text-xs font-bold" style={{ color: p.riskFlag === "red" ? "#ff3355" : "#ff6b35" }}>
+                      {p.acwr.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
               </div>
             )}
-            {amberPlayers.length > 0 && (
-              <div className="flex items-start gap-2 text-sm text-white/70 bg-[#ff6b35]/5 rounded-lg p-2.5 border border-[#ff6b35]/10">
-                <Zap className="h-4 w-4 text-[#ff6b35] shrink-0 mt-0.5" />
-                <span>
-                  <strong className="text-[#ff6b35]">{amberPlayers.length} approaching threshold</strong> — monitor {amberPlayers.map(p => `#${p.jerseyNumber}`).join(", ")} and reduce intensity if needed.
-                </span>
+          </div>
+
+          {/* Upcoming Schedule */}
+          <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Calendar className="h-4 w-4 text-[#00d4ff]" />
+              <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">Next 3 Days</span>
+            </div>
+            {upcoming.length === 0 ? (
+              <p className="text-sm text-white/40">No sessions scheduled</p>
+            ) : (
+              <div className="space-y-1.5">
+                {upcoming.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm">
+                    <span className="text-xs font-mono text-white/40 w-12">
+                      {new Date(s.date).toLocaleDateString("en-GB", { weekday: "short" })}
+                    </span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded ${s.type === "match" ? "bg-[#a855f7]/15 text-[#a855f7]" : "bg-[#00d4ff]/10 text-[#00d4ff]"}`}>
+                      {s.type}
+                    </span>
+                    {s.notes && <span className="text-xs text-white/40 truncate">{s.notes.split(".")[0]}</span>}
+                  </div>
+                ))}
               </div>
             )}
-            <div className="flex items-start gap-2 text-sm text-white/70 bg-[#00d4ff]/5 rounded-lg p-2.5 border border-[#00d4ff]/10">
-              <Target className="h-4 w-4 text-[#00d4ff] shrink-0 mt-0.5" />
-              <span>
-                {todaySession
-                  ? `${todaySession.type === "match" ? "Match day" : "Training"} intensity should match team readiness (${teamReadiness}/100).`
-                  : "Rest day — players should focus on sleep and nutrition for tomorrow's session."}
-              </span>
+          </div>
+
+          {/* AI Insights */}
+          <div className="rounded-lg bg-[#a855f7]/5 border border-[#a855f7]/10 p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-[#a855f7]" />
+              <span className="text-xs font-semibold text-[#a855f7]/70 uppercase tracking-wider">AI Insights</span>
+            </div>
+            <div className="space-y-2 text-sm text-white/70">
+              {redPlayers.length > 0 && (
+                <p><span className="text-[#ff3355] font-semibold">{redPlayers.length} danger zone</span> — rest {redPlayers.map(p => `#${p.jerseyNumber}`).join(", ")} today.</p>
+              )}
+              {amberPlayers.length > 0 && (
+                <p><span className="text-[#ff6b35] font-semibold">{amberPlayers.length} caution</span> — monitor {amberPlayers.map(p => `#${p.jerseyNumber}`).join(", ")}.</p>
+              )}
+              {loadTrend !== null && loadTrend > 15 && (
+                <p><span className="text-[#ff6b35] font-semibold">Load spike</span> — weekly load up {loadTrend}%. Consider reducing intensity.</p>
+              )}
+              {loadTrend !== null && loadTrend < -15 && (
+                <p><span className="text-[#00d4ff] font-semibold">Load drop</span> — weekly load down {Math.abs(loadTrend)}%. Good for recovery week.</p>
+              )}
+              {daysUntilMatch !== null && daysUntilMatch <= 2 && daysUntilMatch > 0 && (
+                <p><span className="text-[#a855f7] font-semibold">Match in {daysUntilMatch} day{daysUntilMatch > 1 ? "s" : ""}</span> — keep today&apos;s session light. Focus on set pieces and walk-throughs.</p>
+              )}
+              {playersAtRisk.length === 0 && (!loadTrend || Math.abs(loadTrend) <= 15) && (
+                <p><span className="text-[#00ff88] font-semibold">Looking good</span> — squad is healthy, load is balanced. {todaySession ? `Push the intensity in today's ${todaySession.type} session.` : "Use this rest day to prepare for upcoming sessions."}</p>
+              )}
             </div>
           </div>
         </div>
@@ -253,63 +287,34 @@ export function DailyBriefing({
       {askOpen && (
         <div className="px-5 pb-5 border-t border-white/[0.06] pt-4">
           <div className="flex gap-2">
-            <input
-              value={question}
-              onChange={(e) => setQuestion(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && askAI()}
-              placeholder="Ask anything... 'Who should rest today?', 'Design today's session', 'Compare last 2 matches'"
-              className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[#a855f7]/50 focus:outline-none focus:ring-1 focus:ring-[#a855f7]/20"
-              disabled={aiLoading}
-            />
-            <button
-              onClick={askAI}
-              disabled={!question.trim() || aiLoading}
-              className="shrink-0 h-10 w-10 rounded-lg bg-gradient-to-r from-[#a855f7] to-[#00d4ff] flex items-center justify-center hover:shadow-[0_0_15px_rgba(168,85,247,0.4)] transition-all disabled:opacity-30"
-            >
+            <input value={question} onChange={(e) => setQuestion(e.target.value)} onKeyDown={(e) => e.key === "Enter" && askAI()}
+              placeholder="Ask anything... 'Who should rest?', 'Design today's session', 'Injury risk report'"
+              className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-lg px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-[#a855f7]/50 focus:outline-none" disabled={aiLoading} />
+            <button onClick={askAI} disabled={!question.trim() || aiLoading}
+              className="shrink-0 h-10 w-10 rounded-lg bg-gradient-to-r from-[#a855f7] to-[#00d4ff] flex items-center justify-center disabled:opacity-30">
               {aiLoading ? <Loader2 className="h-4 w-4 text-white animate-spin" /> : <Send className="h-4 w-4 text-white" />}
             </button>
           </div>
-
-          {/* Quick questions */}
           {!aiAnswer && !aiLoading && (
             <div className="flex flex-wrap gap-2 mt-3">
-              {[
-                "Who should rest today?",
-                "Design today's training session",
-                "Squad fitness ranking",
-                "Injury risk report",
-                "Best formation for next match",
-              ].map((q) => (
-                <button
-                  key={q}
-                  onClick={() => { setQuestion(q); setTimeout(askAI, 100); }}
-                  className="text-xs px-3 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/50 hover:text-[#a855f7] hover:border-[#a855f7]/30 transition-all"
-                >
+              {["Who should rest today?", "Design today's session", "Squad fitness ranking", "Injury risk report", "Best formation for next match"].map((q) => (
+                <button key={q} onClick={() => { setQuestion(q); setTimeout(askAI, 50); }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] text-white/50 hover:text-[#a855f7] hover:border-[#a855f7]/30 transition-all">
                   {q}
                 </button>
               ))}
             </div>
           )}
-
-          {/* AI Response */}
           {aiAnswer && (
             <div className="mt-3 rounded-lg bg-white/[0.03] border border-white/[0.06] p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Brain className="h-4 w-4 text-[#a855f7]" />
                 <span className="text-xs font-semibold text-[#a855f7]">Coach M8 AI</span>
               </div>
-              <div className="space-y-1.5">
-                {aiAnswer.split("\n").map((line, i) => {
-                  if (!line.trim()) return <div key={i} className="h-1.5" />;
-                  if (line.trim().startsWith("- ") || line.trim().startsWith("• ")) {
-                    return <p key={i} className="text-sm text-white/80 flex gap-2"><span className="text-[#a855f7]">•</span>{line.replace(/^[-•]\s*/, "")}</p>;
-                  }
-                  if (line.trim().startsWith("**") || line.match(/^\d+\./)) {
-                    return <p key={i} className="text-sm font-semibold text-white mt-2">{line.replace(/\*\*/g, "")}</p>;
-                  }
-                  return <p key={i} className="text-sm text-white/80 leading-relaxed">{line}</p>;
-                })}
-              </div>
+              {aiAnswer.split("\n").map((line, i) => {
+                if (!line.trim()) return <div key={i} className="h-1.5" />;
+                return <p key={i} className="text-sm text-white/80 leading-relaxed">{line}</p>;
+              })}
             </div>
           )}
         </div>
