@@ -81,6 +81,9 @@ export function SessionPlan() {
   const [playerCount, setPlayerCount] = useState("18");
   const [duration, setDuration] = useState("90");
   const [focus, setFocus] = useState("pressing");
+  const [sessionDate, setSessionDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [sessionTime, setSessionTime] = useState("16:00");
+  const [ageGroup, setAgeGroup] = useState("2010");
   const [notes, setNotes] = useState("");
   const [plan, setPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -94,25 +97,59 @@ export function SessionPlan() {
     const pDuration = searchParams.get("duration");
     const pFocus = searchParams.get("focus");
     const pIntensity = searchParams.get("intensity");
+    const pDate = searchParams.get("date");
     if (pType) setType(pType === "match" ? "match-prep" : pType);
     if (pDuration) setDuration(pDuration);
     if (pFocus) setFocus(pFocus.split(" ")[0].toLowerCase() || "pressing");
     if (pIntensity) setNotes((prev) => prev || `Target intensity: ${pIntensity}`);
+    if (pDate) setSessionDate(pDate);
   }, [searchParams]);
 
+  async function saveToSchedule(planText: string) {
+    setAddingToCalendar(true);
+    try {
+      const res = await fetch("/api/sessions/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: sessionDate,
+          type: type === "match-prep" ? "training" : type,
+          duration_minutes: parseInt(duration),
+          location: "HQ",
+          age_group: ageGroup,
+          notes: `${sessionTime} | ${focus} focus | U${new Date().getFullYear() - parseInt(ageGroup)} (${ageGroup})\n\nAI Designed:\n${planText.substring(0, 800)}`,
+        }),
+      });
+      if (res.ok) setAddedToCalendar(true);
+    } catch {
+      // silent
+    } finally {
+      setAddingToCalendar(false);
+    }
+  }
+
   async function designSession() {
-    if (!playerCount || !duration) return;
+    if (!playerCount || !duration || !sessionDate) return;
     setLoading(true);
     setError(null);
+    setAddedToCalendar(false);
     try {
       const res = await fetch("/api/ai/design-session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, playerCount: parseInt(playerCount), duration: parseInt(duration), focus, notes }),
+        body: JSON.stringify({
+          type,
+          playerCount: parseInt(playerCount),
+          duration: parseInt(duration),
+          focus,
+          notes: `Age group: U${new Date().getFullYear() - parseInt(ageGroup)} (${ageGroup}). Date: ${sessionDate} at ${sessionTime}. ${notes}`,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to generate");
       setPlan(data.plan);
+      // Auto-save to schedule
+      await saveToSchedule(data.plan);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -131,7 +168,49 @@ export function SessionPlan() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Row 1: Date, Time, Age Group, Type */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="space-y-1.5">
+              <Label className="text-xs text-white/60 uppercase tracking-wider">
+                Date
+              </Label>
+              <Input
+                type="date"
+                value={sessionDate}
+                onChange={(e) => setSessionDate(e.target.value)}
+                className="bg-white/[0.03] border-white/[0.08] text-white focus:border-[#a855f7]/50"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-white/60 uppercase tracking-wider">
+                Time
+              </Label>
+              <Input
+                type="time"
+                value={sessionTime}
+                onChange={(e) => setSessionTime(e.target.value)}
+                className="bg-white/[0.03] border-white/[0.08] text-white focus:border-[#a855f7]/50"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs text-white/60 uppercase tracking-wider">
+                Age Group
+              </Label>
+              <select
+                value={ageGroup}
+                onChange={(e) => setAgeGroup(e.target.value)}
+                className="w-full rounded-md border border-white/[0.08] bg-white/[0.03] px-3 py-2 text-sm text-white focus:outline-none focus:border-[#a855f7]/50 focus:ring-1 focus:ring-[#a855f7]/20"
+              >
+                {["2010", "2011", "2012", "2013", "2014", "2015", "2016"].map((ag) => (
+                  <option key={ag} value={ag} className="bg-[#0a0a0f] text-white">
+                    U{new Date().getFullYear() - parseInt(ag)} ({ag})
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="space-y-1.5">
               <Label className="text-xs text-white/60 uppercase tracking-wider">
                 Session Type
@@ -148,7 +227,10 @@ export function SessionPlan() {
                 ))}
               </select>
             </div>
+          </div>
 
+          {/* Row 2: Focus, Players, Duration */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <Label className="text-xs text-white/60 uppercase tracking-wider">
                 Focus Area
@@ -281,8 +363,8 @@ export function SessionPlan() {
                 <span className="text-gradient">
                   {type.charAt(0).toUpperCase() + type.slice(1)} Session — {focus.charAt(0).toUpperCase() + focus.slice(1)} Focus
                 </span>
-                <span className="ml-auto text-xs text-white/40">
-                  {playerCount} players · {duration} min
+                <span className="ml-auto text-xs text-white/40 font-mono">
+                  {sessionDate} · {sessionTime} · U{new Date().getFullYear() - parseInt(ageGroup)} · {playerCount}p · {duration}min
                 </span>
               </CardTitle>
             </CardHeader>
@@ -290,65 +372,33 @@ export function SessionPlan() {
               <div className="space-y-1.5">{formatMarkdown(plan)}</div>
             </CardContent>
           </Card>
-          {/* Add to Calendar + Export Row */}
+          {/* Schedule status + Export Row */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={async () => {
-                setAddingToCalendar(true);
-                try {
-                  const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
-                  const res = await fetch("/api/sessions/create", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      date,
-                      type: type === "match-prep" ? "training" : type,
-                      duration_minutes: parseInt(duration),
-                      location: "HQ",
-                      notes: `${focus} focus — AI designed\n\n${plan?.substring(0, 500)}`,
-                    }),
-                  });
-                  if (res.ok) {
-                    setAddedToCalendar(true);
-                  }
-                } catch {
-                  // silently fail
-                } finally {
-                  setAddingToCalendar(false);
-                }
-              }}
-              disabled={addedToCalendar || addingToCalendar}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300 disabled:opacity-60"
-              style={{
-                background: addedToCalendar
-                  ? "rgba(0, 255, 136, 0.15)"
-                  : "linear-gradient(135deg, #00d4ff, #a855f7)",
-                color: addedToCalendar ? "#00ff88" : "white",
-                border: addedToCalendar ? "1px solid rgba(0, 255, 136, 0.3)" : "none",
-                boxShadow: addedToCalendar
-                  ? "none"
-                  : "0 0 20px rgba(0, 212, 255, 0.2)",
-              }}
-            >
-              {addedToCalendar ? (
-                <>
-                  <Check className="h-4 w-4" />
-                  Added to Planner
-                </>
-              ) : addingToCalendar ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <CalendarPlus className="h-4 w-4" />
-                  Add to Planner
-                </>
-              )}
-            </button>
+            {addedToCalendar ? (
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-[#00ff88]/15 text-[#00ff88] border border-[#00ff88]/30">
+                <Check className="h-4 w-4" />
+                Saved to Schedule — {sessionDate} at {sessionTime} · U{new Date().getFullYear() - parseInt(ageGroup)}
+              </div>
+            ) : (
+              <button
+                onClick={() => plan && saveToSchedule(plan)}
+                disabled={addingToCalendar}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300"
+                style={{
+                  background: "linear-gradient(135deg, #00d4ff, #a855f7)",
+                  color: "white",
+                  boxShadow: "0 0 20px rgba(0, 212, 255, 0.2)",
+                }}
+              >
+                {addingToCalendar ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Saving...</>
+                ) : (
+                  <><CalendarPlus className="h-4 w-4" /> Save to Schedule</>
+                )}
+              </button>
+            )}
             <ExportShareBar
-              title={`Session Plan — ${type} · ${focus} Focus`}
+              title={`Session Plan — ${type} · ${focus} Focus · ${sessionDate}`}
               content={plan}
             />
           </div>

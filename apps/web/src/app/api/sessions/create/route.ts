@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 export async function POST(request: NextRequest) {
   try {
-    const { date, type, duration_minutes, location, notes } = await request.json();
+    const { date, type, duration_minutes, location, notes, age_group } = await request.json();
 
     if (!date || !type) {
       return NextResponse.json({ error: "date and type required" }, { status: 400 });
@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         type,
         duration_minutes: duration_minutes || 90,
         location: location || "HQ",
-        age_group: "2010",
+        age_group: age_group || "2010",
         notes: notes || "",
       })
       .select()
