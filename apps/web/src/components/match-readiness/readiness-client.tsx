@@ -379,7 +379,7 @@ Fatigued: ${fatiguedNames.join(", ") || "none"}.`;
               <p className="text-xs text-[#a855f7] font-semibold mb-1.5 uppercase tracking-wider">
                 AI Squad Readiness Brief
               </p>
-              <p className="text-sm text-white/70 leading-relaxed">{aiNarrative}</p>
+              <p className="text-sm text-white/50 leading-relaxed">{aiNarrative}</p>
             </div>
           </div>
         ) : (

@@ -48,7 +48,7 @@ function formatMarkdown(text: string) {
       return (
         <div key={i} className="flex items-start gap-2 text-sm ml-4">
           <span className="text-[#00d4ff] mt-1 shrink-0">•</span>
-          <span className="text-white/70 leading-relaxed" dangerouslySetInnerHTML={{ __html: html.replace(/^[-•]\s*/, "") }} />
+          <span className="text-white/50 leading-relaxed" dangerouslySetInnerHTML={{ __html: html.replace(/^[-•]\s*/, "") }} />
         </div>
       );
     }
@@ -59,13 +59,13 @@ function formatMarkdown(text: string) {
           <span className="text-[#a855f7] font-mono text-xs mt-0.5 shrink-0">
             {line.trim().match(/^(\d+)\./)?.[1]}.
           </span>
-          <span className="text-white/70 leading-relaxed" dangerouslySetInnerHTML={{ __html: html.replace(/^\d+\.\s*/, "") }} />
+          <span className="text-white/50 leading-relaxed" dangerouslySetInnerHTML={{ __html: html.replace(/^\d+\.\s*/, "") }} />
         </div>
       );
     }
 
     return (
-      <p key={i} className="text-sm text-white/70 leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />
+      <p key={i} className="text-sm text-white/50 leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />
     );
   });
 }

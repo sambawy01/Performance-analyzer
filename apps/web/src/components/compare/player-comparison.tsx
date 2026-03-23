@@ -87,7 +87,7 @@ function formatMarkdown(text: string) {
         </div>
       );
     }
-    return <p key={i} className="text-sm text-white/70 leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />;
+    return <p key={i} className="text-sm text-white/50 leading-relaxed" dangerouslySetInnerHTML={{ __html: html }} />;
   });
 }
 

@@ -22,7 +22,7 @@ function formatMarkdown(text: string) {
           <span className="text-[#a855f7] font-mono text-xs mt-0.5 shrink-0">
             {line.trim().match(/^(\d+)\./)?.[1]}.
           </span>
-          <span className="text-white/70 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatted.replace(/^\d+\.\s*/, "") }} />
+          <span className="text-white/50 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatted.replace(/^\d+\.\s*/, "") }} />
         </div>
       );
     }
@@ -30,14 +30,14 @@ function formatMarkdown(text: string) {
       return (
         <div key={i} className="flex items-start gap-2 text-sm ml-2">
           <span className="text-[#00d4ff] mt-0.5">•</span>
-          <span className="text-white/70 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatted.replace(/^[-•]\s*/, "") }} />
+          <span className="text-white/50 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatted.replace(/^[-•]\s*/, "") }} />
         </div>
       );
     }
     if (line.trim().startsWith("##") || (line.trim().startsWith("**") && line.trim().endsWith("**"))) {
       return <p key={i} className="text-sm font-semibold text-white mt-3 first:mt-0">{line.replace(/[#*]/g, "").trim()}</p>;
     }
-    return <p key={i} className="text-sm text-white/70 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatted }} />;
+    return <p key={i} className="text-sm text-white/50 leading-relaxed" dangerouslySetInnerHTML={{ __html: formatted }} />;
   });
 }
 

@@ -64,7 +64,7 @@ function parseMarkdown(text: string) {
             {line.trim().match(/^(\d+)\./)?.[1]}.
           </span>
           <span
-            className="text-white/70 leading-relaxed"
+            className="text-white/50 leading-relaxed"
             dangerouslySetInnerHTML={{ __html: formatted.replace(/^\d+\.\s*/, "") }}
           />
         </div>
@@ -76,7 +76,7 @@ function parseMarkdown(text: string) {
         <div key={i} className="flex items-start gap-2 text-sm ml-2">
           <span className="text-[#ff3355] mt-1.5 shrink-0 text-xs">▸</span>
           <span
-            className="text-white/70 leading-relaxed"
+            className="text-white/50 leading-relaxed"
             dangerouslySetInnerHTML={{ __html: formatted.replace(/^[-•]\s*/, "") }}
           />
         </div>
@@ -86,7 +86,7 @@ function parseMarkdown(text: string) {
     return (
       <p
         key={i}
-        className="text-sm text-white/70 leading-relaxed"
+        className="text-sm text-white/50 leading-relaxed"
         dangerouslySetInnerHTML={{ __html: formatted }}
       />
     );
