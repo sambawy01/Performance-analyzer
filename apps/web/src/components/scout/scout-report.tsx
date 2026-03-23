@@ -162,28 +162,54 @@ export function ScoutReport() {
         </div>
       )}
 
-      {/* Loading State */}
+      {/* Loading State — Deep Research Pipeline */}
       {loading && (
         <Card>
-          <CardContent className="py-12">
-            <div className="flex flex-col items-center gap-4">
+          <CardContent className="py-10">
+            <div className="flex flex-col items-center gap-6">
               <div className="relative">
-                <div className="rounded-full bg-[#00d4ff]/10 p-5 animate-pulse shadow-[0_0_30px_rgba(0,212,255,0.2)]">
-                  <Target className="h-8 w-8 text-[#00d4ff]" />
+                <div className="rounded-full bg-[#00d4ff]/10 p-5 shadow-[0_0_30px_rgba(0,212,255,0.2)]">
+                  <Target className="h-8 w-8 text-[#00d4ff] animate-pulse" />
                 </div>
                 <div
                   className="absolute inset-0 rounded-full border-2 border-[#00d4ff]/30 animate-spin border-t-[#00d4ff]"
                   style={{ animationDuration: "2s" }}
                 />
               </div>
-              <div className="text-center">
-                <p className="text-sm text-[#00d4ff] animate-pulse font-medium">
-                  Researching {opponent}...
+
+              <div className="text-center space-y-2">
+                <p className="text-sm text-[#00d4ff] font-semibold">
+                  Deep Research in Progress
                 </p>
-                <p className="text-xs text-white/40 mt-1">
-                  Gathering intel, analyzing formation &amp; key players
+                <p className="text-xs text-white/40">
+                  Building intelligence dossier on {opponent}
                 </p>
               </div>
+
+              {/* Research pipeline steps */}
+              <div className="w-full max-w-sm space-y-2">
+                {[
+                  { label: "Searching identity & background", delay: "0s" },
+                  { label: "Pulling recent results & standings", delay: "3s" },
+                  { label: "Analyzing squad & key players", delay: "6s" },
+                  { label: "Studying formation & tactics", delay: "9s" },
+                  { label: "Checking news, injuries & transfers", delay: "12s" },
+                  { label: "Compiling intelligence report", delay: "18s" },
+                ].map((step, i) => (
+                  <div
+                    key={i}
+                    className="flex items-center gap-2 text-xs text-white/30 animate-pulse"
+                    style={{ animationDelay: step.delay, animationDuration: "3s" }}
+                  >
+                    <div className="h-1.5 w-1.5 rounded-full bg-[#00d4ff]/40" />
+                    {step.label}
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-[10px] text-white/20 mt-2">
+                This may take 30-60 seconds — running up to 25 web searches
+              </p>
             </div>
           </CardContent>
         </Card>
