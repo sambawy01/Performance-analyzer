@@ -6,6 +6,7 @@ import {
   getPlayerSessions,
   getPlayerLoadHistory,
 } from "@/lib/queries/players";
+import { createClient } from "@/lib/supabase/server";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlayerOverview } from "@/components/players/player-overview";
 import { PlayerPhysicalTrends } from "@/components/players/player-physical-trends";
@@ -13,6 +14,7 @@ import { PlayerSessionHistory } from "@/components/players/player-session-histor
 import { PlayerLoadChart } from "@/components/players/player-load-chart";
 import { AiReportChat } from "@/components/ai/ai-report-chat";
 import { TalentScore } from "@/components/players/talent-score";
+import { InjuryRiskPanel } from "@/components/players/injury-risk-panel";
 
 interface PlayerProfilePageProps {
   params: Promise<{ id: string }>;
@@ -23,11 +25,22 @@ export default async function PlayerProfilePage({
 }: PlayerProfilePageProps) {
   const { id } = await params;
 
+  const supabase = await createClient();
+
   const [player, sessionMetrics, loadHistory] = await Promise.all([
     getPlayerById(id),
     getPlayerSessions(id),
     getPlayerLoadHistory(id),
   ]);
+
+  // Fetch recent wearable metrics for injury risk panel
+  const { data: recentMetricsRaw } = await supabase
+    .from("wearable_metrics")
+    .select("hr_recovery_60s, trimp_score, created_at")
+    .eq("player_id", id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const recentMetrics = recentMetricsRaw ?? [];
 
   if (!player) {
     notFound();
@@ -55,6 +68,13 @@ export default async function PlayerProfilePage({
         player={player as any}
         latestLoad={latestLoad as any}
         sessionCount={recentSessionCount}
+      />
+
+      {/* Enhanced Injury Risk Panel */}
+      <InjuryRiskPanel
+        playerName={player.name}
+        loadHistory={loadHistory as any}
+        recentMetrics={recentMetrics as any}
       />
 
       {/* Development Potential Score */}

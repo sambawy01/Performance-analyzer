@@ -6,6 +6,7 @@ import { RecentSessionsTable } from "@/components/dashboard/recent-sessions-tabl
 import { AlertPanel } from "@/components/dashboard/alert-panel";
 import { SessionSummaryCard } from "@/components/dashboard/session-summary-card";
 import { DailyBriefing } from "@/components/planner/daily-briefing";
+import { LoadHeatmap } from "@/components/dashboard/load-heatmap";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -160,6 +161,86 @@ export default async function DashboardPage() {
     }
   }
 
+  // ── Load Heatmap: last 30 days ──────────────────────────────────────
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+
+  const { data: heatmapSessions } = await supabase
+    .from("sessions")
+    .select("id, date, type")
+    .eq("academy_id", profile.academy_id)
+    .gte("date", thirtyDaysAgo.toISOString().split("T")[0])
+    .order("date", { ascending: true });
+
+  let heatmapMetrics: { session_id: string; trimp_score: number }[] = [];
+  if (heatmapSessions && heatmapSessions.length > 0) {
+    const ids = heatmapSessions.map((s) => s.id);
+    const { data: hm } = await supabase
+      .from("wearable_metrics")
+      .select("session_id, trimp_score")
+      .in("session_id", ids);
+    heatmapMetrics = hm ?? [];
+  }
+
+  // Build day-by-day data
+  const heatmapDays: {
+    date: string;
+    label: string;
+    avgTrimp: number | null;
+    sessionType: string | null;
+    isRestDay: boolean;
+  }[] = [];
+
+  const heatmapSessionMap = new Map<string, { type: string }>();
+  for (const s of heatmapSessions ?? []) {
+    heatmapSessionMap.set(s.date, { type: s.type });
+  }
+
+  const heatmapMetricsMap = new Map<string, number[]>();
+  for (const m of heatmapMetrics) {
+    // Find which date this session is
+    const sessionDate = heatmapSessions?.find((s) => s.id === m.session_id)?.date;
+    if (!sessionDate) continue;
+    const arr = heatmapMetricsMap.get(sessionDate) ?? [];
+    arr.push(m.trimp_score);
+    heatmapMetricsMap.set(sessionDate, arr);
+  }
+
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateKey = d.toISOString().split("T")[0];
+    const label = d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    const sessInfo = heatmapSessionMap.get(dateKey);
+    const trimpArr = heatmapMetricsMap.get(dateKey);
+    const avgTrimp =
+      trimpArr && trimpArr.length > 0
+        ? Math.round(trimpArr.reduce((s, v) => s + v, 0) / trimpArr.length)
+        : null;
+
+    heatmapDays.push({
+      date: dateKey,
+      label,
+      avgTrimp,
+      sessionType: sessInfo?.type ?? null,
+      isRestDay: !sessInfo && avgTrimp === null,
+    });
+  }
+
+  // Simple AI insight for heatmap (heuristic, no API call to keep SSR fast)
+  const recentHighDays = heatmapDays.slice(-7).filter((d) => d.avgTrimp !== null && d.avgTrimp > 150).length;
+  const recentSessions = heatmapDays.slice(-7).filter((d) => d.avgTrimp !== null).length;
+  let heatmapInsight: string | null = null;
+  if (recentHighDays >= 3) {
+    heatmapInsight = `**High load alert:** ${recentHighDays} high-intensity sessions in the last 7 days. Consider a recovery or low-intensity session to prevent overtraining.`;
+  } else if (recentSessions === 0) {
+    heatmapInsight = `No sessions recorded in the last 7 days. Schedule training to maintain fitness.`;
+  } else if (recentSessions <= 2) {
+    heatmapInsight = `Low training frequency this week (${recentSessions} session${recentSessions === 1 ? "" : "s"}). Consider increasing volume if players are well-recovered.`;
+  } else {
+    heatmapInsight = `Training load is well-distributed over the last 7 days (${recentSessions} sessions). Good periodization.`;
+  }
+
   // Today's session for Daily Briefing
   const todayStr = new Date().toISOString().split("T")[0];
   const { data: todaySessions } = await supabase
@@ -306,6 +387,9 @@ export default async function DashboardPage() {
           <RiskDonutWrapper distribution={riskDist} />
         </div>
       </div>
+
+      {/* Row 2.5: Load Heatmap */}
+      <LoadHeatmap days={heatmapDays} aiInsight={heatmapInsight} />
 
       {/* Row 3: Recent Sessions + Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
