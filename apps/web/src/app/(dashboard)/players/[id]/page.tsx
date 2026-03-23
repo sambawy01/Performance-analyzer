@@ -12,6 +12,7 @@ import { PlayerPhysicalTrends } from "@/components/players/player-physical-trend
 import { PlayerSessionHistory } from "@/components/players/player-session-history";
 import { PlayerLoadChart } from "@/components/players/player-load-chart";
 import { AiReportChat } from "@/components/ai/ai-report-chat";
+import { TalentScore } from "@/components/players/talent-score";
 
 interface PlayerProfilePageProps {
   params: Promise<{ id: string }>;
@@ -54,6 +55,14 @@ export default async function PlayerProfilePage({
         player={player as any}
         latestLoad={latestLoad as any}
         sessionCount={recentSessionCount}
+      />
+
+      {/* Development Potential Score */}
+      <TalentScore
+        playerId={id}
+        playerName={player.name}
+        sessionMetrics={sessionMetrics as any}
+        loadHistory={loadHistory as any}
       />
 
       {/* AI Development Report + Chat */}

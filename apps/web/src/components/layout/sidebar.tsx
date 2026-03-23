@@ -7,6 +7,9 @@ import {
   Radio,
   Settings,
   ShieldHalf,
+  Target,
+  ClipboardList,
+  FileText,
 } from "lucide-react";
 
 const navItems = [
@@ -38,6 +41,24 @@ const navItems = [
     href: "/squad-builder",
     label: "Squad Builder",
     icon: ShieldHalf,
+    roles: ["coach", "analyst", "director"],
+  },
+  {
+    href: "/scout",
+    label: "Scout",
+    icon: Target,
+    roles: ["coach", "analyst", "director"],
+  },
+  {
+    href: "/session-design",
+    label: "Session Design",
+    icon: ClipboardList,
+    roles: ["coach", "analyst", "director"],
+  },
+  {
+    href: "/reports/parent",
+    label: "Reports",
+    icon: FileText,
     roles: ["coach", "analyst", "director"],
   },
   {
