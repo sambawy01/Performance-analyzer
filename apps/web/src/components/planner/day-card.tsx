@@ -36,6 +36,7 @@ interface DayCardProps {
   isMatch: boolean;
   matchOpponent?: string;
   playersAtRisk?: Array<{
+    id: string;
     jerseyNumber: number;
     name: string;
     acwr: number;

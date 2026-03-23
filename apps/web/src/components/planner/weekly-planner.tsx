@@ -19,6 +19,7 @@ import type { Session } from "@/types";
 interface WeeklyPlannerProps {
   initialSessions: Session[];
   playersAtRisk: Array<{
+    id: string;
     jerseyNumber: number;
     name: string;
     acwr: number;
@@ -28,6 +29,100 @@ interface WeeklyPlannerProps {
     date: string;
     opponent: string;
   } | null;
+}
+
+/* ── Risk Strip: sorted by severity, top 8 visible, expand to see all ── */
+function RiskStrip({
+  playersAtRisk,
+}: {
+  playersAtRisk: WeeklyPlannerProps["playersAtRisk"];
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Sort: red first, then by worst ACWR (furthest from 1.0 in either direction)
+  const sorted = [...playersAtRisk].sort((a, b) => {
+    if (a.riskFlag === "red" && b.riskFlag !== "red") return -1;
+    if (b.riskFlag === "red" && a.riskFlag !== "red") return 1;
+    return Math.abs(a.acwr - 1) > Math.abs(b.acwr - 1) ? -1 : 1;
+  });
+
+  const redCount = sorted.filter((p) => p.riskFlag === "red").length;
+  const amberCount = sorted.length - redCount;
+  const visible = expanded ? sorted : sorted.slice(0, 8);
+  const hasMore = sorted.length > 8;
+
+  return (
+    <div className="glass rounded-lg px-4 py-3">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 text-[#ff6b35]" />
+            <span className="data-label text-[#ff6b35]">
+              Load Alerts
+            </span>
+          </div>
+          {redCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#ff3355]/15 text-[#ff3355] border border-[#ff3355]/20">
+              {redCount} high
+            </span>
+          )}
+          {amberCount > 0 && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#ff6b35]/15 text-[#ff6b35] border border-[#ff6b35]/20">
+              {amberCount} moderate
+            </span>
+          )}
+        </div>
+        {hasMore && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-[10px] text-white/40 hover:text-white/70 font-medium transition-colors"
+          >
+            {expanded ? "Show less" : `+${sorted.length - 8} more`}
+          </button>
+        )}
+      </div>
+
+      {/* Player chips — horizontal wrap */}
+      <div className="flex flex-wrap gap-1.5">
+        {visible.map((p) => {
+          const isRed = p.riskFlag === "red";
+          const color = isRed ? "#ff3355" : "#ff6b35";
+          return (
+            <Link
+              key={p.id}
+              href={`/players/${p.id}`}
+              className="group inline-flex items-center gap-1.5 text-[11px] font-medium pl-2 pr-1.5 py-1 rounded-md transition-all duration-200 hover:brightness-125"
+              style={{
+                backgroundColor: `${color}08`,
+                border: `1px solid ${color}20`,
+              }}
+            >
+              <span
+                className="h-1.5 w-1.5 rounded-full shrink-0"
+                style={{
+                  backgroundColor: color,
+                  boxShadow: `0 0 4px ${color}60`,
+                }}
+              />
+              <span className="text-white/70 group-hover:text-white truncate max-w-[120px]">
+                #{p.jerseyNumber} {p.name.split(" ")[0]}
+              </span>
+              <span
+                className="font-mono text-[9px] px-1 rounded shrink-0"
+                style={{
+                  backgroundColor: `${color}15`,
+                  color: color,
+                }}
+              >
+                {p.acwr.toFixed(2)}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -285,56 +380,9 @@ export function WeeklyPlanner({
         </button>
       </div>
 
-      {/* Players at Risk Banner — Compact Chip Grid */}
+      {/* Players at Risk — Compact Scrollable Strip */}
       {playersAtRisk.length > 0 && (
-        <div className="glass rounded-lg px-4 py-3 border-l-2 border-[#ff6b35]">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className="h-3.5 w-3.5 text-[#ff6b35]" />
-            <span className="text-[10px] text-[#ff6b35] font-semibold uppercase tracking-wider">
-              Players at Risk ({playersAtRisk.length})
-            </span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5">
-            {playersAtRisk.map((p) => {
-              const chipColor =
-                p.riskFlag === "red" ? "#ff3355" : "#ff6b35";
-              return (
-                <Link
-                  key={p.jerseyNumber}
-                  href={`/players`}
-                  className="inline-flex items-center gap-1.5 text-[11px] font-medium px-2 py-1 rounded-md transition-all duration-200 hover:scale-[1.03]"
-                  style={{
-                    backgroundColor: `${chipColor}10`,
-                    border: `1px solid ${chipColor}30`,
-                  }}
-                >
-                  <span
-                    className="h-1.5 w-1.5 rounded-full shrink-0"
-                    style={{
-                      backgroundColor: chipColor,
-                      boxShadow: `0 0 4px ${chipColor}80`,
-                    }}
-                  />
-                  <span
-                    className="truncate"
-                    style={{ color: chipColor }}
-                  >
-                    #{p.jerseyNumber} {p.name}
-                  </span>
-                  <span
-                    className="font-mono text-[9px] px-1 py-0 rounded shrink-0"
-                    style={{
-                      backgroundColor: `${chipColor}20`,
-                      color: chipColor,
-                    }}
-                  >
-                    {p.acwr.toFixed(2)}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
+        <RiskStrip playersAtRisk={playersAtRisk} />
       )}
 
       {/* Error Banner */}

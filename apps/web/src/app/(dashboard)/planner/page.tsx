@@ -56,7 +56,7 @@ export default async function PlannerPage() {
   const riskPlayerMap = new Map((riskPlayers ?? []).map((p: any) => [p.id, p]));
 
   const seenPlayers = new Set<string>();
-  const playersAtRisk: Array<{ jerseyNumber: number; name: string; acwr: number; riskFlag: string }> = [];
+  const playersAtRisk: Array<{ id: string; jerseyNumber: number; name: string; acwr: number; riskFlag: string }> = [];
 
   for (const r of riskRecords ?? []) {
     if (!seenPlayers.has(r.player_id)) {
@@ -64,6 +64,7 @@ export default async function PlannerPage() {
       const player = riskPlayerMap.get(r.player_id);
       if (player) {
         playersAtRisk.push({
+          id: player.id,
           jerseyNumber: player.jersey_number,
           name: player.name,
           acwr: r.acwr_ratio,
