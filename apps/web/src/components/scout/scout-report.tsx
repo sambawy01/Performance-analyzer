@@ -207,9 +207,15 @@ export function ScoutReport() {
                 ))}
               </div>
 
-              <p className="text-[10px] text-white/20 mt-2">
-                This may take 30-60 seconds — running up to 25 web searches
-              </p>
+              {/* Note */}
+              <div className="w-full max-w-md glass rounded-lg px-4 py-3 mt-2">
+                <p className="text-[11px] text-white/40 leading-relaxed text-center">
+                  Coach M8 is running a <span className="text-[#00d4ff]/70 font-medium">deep intelligence scan</span> — searching
+                  up to 25 sources across the web for real match results, squad rosters,
+                  tactical analysis, and latest news. This takes 30-60 seconds but produces
+                  a professional-grade scouting dossier you can brief your squad from.
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
