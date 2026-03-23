@@ -20,6 +20,8 @@ import {
   Brain,
   FileText,
   ChevronDown,
+  Trophy,
+  Medal,
 } from "lucide-react";
 import { HR_ZONE_COLORS, HR_ZONE_LABELS } from "@/lib/hr-zones";
 import type { HrZone } from "@/lib/hr-zones";
@@ -65,78 +67,253 @@ interface OverviewTabProps {
   }>;
 }
 
+/* ------------------------------------------------------------------ */
+/*  StatCard — connected strip style with colored accent + glow       */
+/* ------------------------------------------------------------------ */
 function StatCard({
   icon: Icon,
   label,
   value,
   subtitle,
   color,
+  accentHex,
   infoTerm,
   players,
   analysis,
+  isCircularScore,
 }: {
   icon: React.ElementType;
   label: string;
   value: string | number;
   subtitle?: string;
   color?: string;
+  accentHex?: string;
   infoTerm?: string;
   players?: Array<{ name: string; jersey: number; value: string | number }>;
   analysis?: string;
+  isCircularScore?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasDetail = (players && players.length > 0) || analysis;
 
+  const glowColor = accentHex ?? "#ffffff";
+  const circularValue = typeof value === "number" ? value : parseInt(String(value), 10);
+  const circularPct = isCircularScore && !isNaN(circularValue) ? circularValue : 0;
+
   return (
-    <Card
-      className={`${hasDetail ? "cursor-pointer transition-all hover:border-white/20" : ""} ${expanded ? "w-full" : "w-[calc(50%-6px)] md:w-[calc(25%-9px)] lg:w-[calc(14.28%-9px)]"} self-start`}
+    <div
+      className={`group/stat relative flex flex-col transition-all duration-300 ${
+        hasDetail ? "cursor-pointer" : ""
+      } ${expanded ? "w-full" : "w-[calc(50%-4px)] md:w-[calc(25%-6px)] lg:flex-1 min-w-[140px]"} self-start`}
       onClick={() => hasDetail && setExpanded(!expanded)}
     >
-      <CardContent className="pt-4 pb-3">
-        <div className="flex items-center justify-between mb-1">
+      {/* Colored accent bar top */}
+      <div
+        className="h-[3px] w-full rounded-t-lg"
+        style={{ background: glowColor }}
+      />
+
+      {/* Card body */}
+      <div
+        className="flex-1 rounded-b-lg border border-t-0 border-white/[0.08] bg-white/[0.03] backdrop-blur-xl px-3.5 py-3 transition-all duration-300 group-hover/stat:bg-white/[0.06] group-hover/stat:border-white/[0.15] group-hover/stat:scale-[1.02]"
+        style={{
+          boxShadow: expanded
+            ? `0 0 20px ${glowColor}15, inset 0 1px 0 ${glowColor}10`
+            : `inset 0 1px 0 ${glowColor}08`,
+        }}
+      >
+        {/* Header row */}
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
-            <Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} />
-            <p className="text-xs text-muted-foreground">
+            {/* Glowing icon circle */}
+            <div
+              className="relative flex h-7 w-7 items-center justify-center rounded-full"
+              style={{
+                background: `${glowColor}15`,
+                boxShadow: `0 0 12px ${glowColor}20`,
+              }}
+            >
+              <Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} />
+            </div>
+            <p className="text-[10px] uppercase tracking-widest text-white/50 font-medium">
               {infoTerm ? <MetricInfo term={infoTerm}>{label}</MetricInfo> : label}
             </p>
           </div>
           {hasDetail && (
-            <ChevronDown className={`h-3.5 w-3.5 text-white/30 transition-transform ${expanded ? "rotate-180" : ""}`} />
+            <ChevronDown
+              className={`h-3.5 w-3.5 text-white/30 transition-transform duration-300 ${expanded ? "rotate-180" : ""}`}
+            />
           )}
         </div>
-        <p className="text-2xl font-bold font-mono">{value}</p>
-        {subtitle && (
-          <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+
+        {/* Value */}
+        {isCircularScore && !isNaN(circularPct) ? (
+          <div className="flex items-center gap-3">
+            {/* Circular progress ring */}
+            <div className="relative h-14 w-14 shrink-0">
+              <svg className="h-14 w-14 -rotate-90" viewBox="0 0 56 56">
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="24"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.06)"
+                  strokeWidth="4"
+                />
+                <circle
+                  cx="28"
+                  cy="28"
+                  r="24"
+                  fill="none"
+                  stroke={glowColor}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray={`${(circularPct / 100) * 150.8} 150.8`}
+                  style={{
+                    filter: `drop-shadow(0 0 4px ${glowColor}60)`,
+                  }}
+                />
+              </svg>
+              <span
+                className="absolute inset-0 flex items-center justify-center text-lg font-bold font-mono"
+                style={{ color: glowColor, textShadow: `0 0 8px ${glowColor}40` }}
+              >
+                {circularPct}
+              </span>
+            </div>
+            {subtitle && (
+              <p className="text-[10px] uppercase tracking-widest text-white/40">{subtitle}</p>
+            )}
+          </div>
+        ) : (
+          <>
+            <p
+              className="text-3xl font-bold font-mono leading-none"
+              style={{ textShadow: `0 0 12px ${glowColor}30` }}
+            >
+              {value}
+            </p>
+            {subtitle && (
+              <p className="text-[10px] uppercase tracking-widest text-white/40 mt-1">{subtitle}</p>
+            )}
+          </>
         )}
 
+        {/* Expanded detail */}
         {expanded && (
-          <div className="mt-3 pt-3 border-t border-white/[0.08] space-y-2">
+          <div
+            className="mt-3 pt-3 space-y-2 overflow-hidden"
+            style={{ borderTop: `1px solid ${glowColor}15` }}
+          >
             {analysis && (
               <p className="text-sm text-white/70 leading-relaxed">{analysis}</p>
             )}
             {players && players.length > 0 && (
               <div className="space-y-1.5">
-                <p className="text-xs text-white/40 uppercase tracking-wider font-semibold">Per Player</p>
+                <p className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
+                  Per Player
+                </p>
                 {players.slice(0, 5).map((p, i) => (
                   <div key={i} className="flex items-center justify-between text-sm">
                     <span className="text-white/70">
-                      <span className={`font-mono ${i === 0 ? "text-[#00ff88]" : ""}`}>#{p.jersey}</span> {p.name}
+                      <span
+                        className={`font-mono ${i === 0 ? "text-[#00ff88]" : ""}`}
+                      >
+                        #{p.jersey}
+                      </span>{" "}
+                      {p.name}
                     </span>
-                    <span className="font-mono font-semibold text-white">{p.value}</span>
+                    <span className="font-mono font-semibold text-white">
+                      {p.value}
+                    </span>
                   </div>
                 ))}
                 {players.length > 5 && (
-                  <p className="text-xs text-white/40">+{players.length - 5} more players</p>
+                  <p className="text-xs text-white/40">
+                    +{players.length - 5} more players
+                  </p>
                 )}
               </div>
             )}
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Section Header                                                     */
+/* ------------------------------------------------------------------ */
+function SectionHeader({
+  title,
+  gradient,
+  pulseDot,
+  pulseDotColor,
+}: {
+  title: string;
+  gradient: string;
+  pulseDot?: boolean;
+  pulseDotColor?: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 mb-3">
+      <div className={`h-px flex-1 max-w-8 ${gradient}`} />
+      <div className="flex items-center gap-2">
+        {pulseDot && (
+          <span className="relative flex h-2 w-2">
+            <span
+              className="absolute inline-flex h-full w-full animate-ping rounded-full opacity-75"
+              style={{ backgroundColor: pulseDotColor ?? "#00d4ff" }}
+            />
+            <span
+              className="relative inline-flex h-2 w-2 rounded-full"
+              style={{ backgroundColor: pulseDotColor ?? "#00d4ff" }}
+            />
+          </span>
+        )}
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.2em] text-white/60">
+          {title}
+        </h3>
+      </div>
+      <div className={`h-px flex-1 ${gradient}`} />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Performer Rank Icon                                                */
+/* ------------------------------------------------------------------ */
+function RankIcon({ rank }: { rank: number }) {
+  if (rank === 0) {
+    return <Trophy className="h-5 w-5 text-amber-400" style={{ filter: "drop-shadow(0 0 4px rgba(251,191,36,0.5))" }} />;
+  }
+  if (rank === 1) {
+    return <Medal className="h-5 w-5 text-gray-300" style={{ filter: "drop-shadow(0 0 4px rgba(209,213,219,0.4))" }} />;
+  }
+  return <Medal className="h-5 w-5 text-amber-700" style={{ filter: "drop-shadow(0 0 4px rgba(180,83,9,0.4))" }} />;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Player Avatar (initial)                                            */
+/* ------------------------------------------------------------------ */
+function PlayerAvatar({ name, rank }: { name: string; rank: number }) {
+  const initial = name.charAt(0).toUpperCase();
+  const borderColors = ["border-amber-400/50", "border-gray-300/50", "border-amber-700/50"];
+  const bgColors = ["bg-amber-400/15", "bg-gray-300/10", "bg-amber-700/10"];
+
+  return (
+    <div
+      className={`flex h-9 w-9 items-center justify-center rounded-full border ${borderColors[rank] ?? "border-white/10"} ${bgColors[rank] ?? "bg-white/5"} text-sm font-bold text-white/80 shrink-0`}
+    >
+      {initial}
+    </div>
+  );
+}
+
+/* ================================================================== */
+/*  MAIN COMPONENT                                                     */
+/* ================================================================== */
 export function SessionOverviewTab({
   session,
   metrics,
@@ -156,31 +333,41 @@ export function SessionOverviewTab({
         metrics.reduce((s, m) => s + m.trimp_score, 0) / metrics.length
       )
     : null;
-  const totalTrimp = hasData
-    ? Math.round(metrics.reduce((s, m) => s + m.trimp_score, 0))
-    : null;
 
   // CV metrics aggregates
   const avgDistance = hasCvData
-    ? Math.round(cvMetrics.reduce((s, m) => s + m.total_distance_m, 0) / cvMetrics.length)
+    ? Math.round(
+        cvMetrics.reduce((s, m) => s + m.total_distance_m, 0) / cvMetrics.length
+      )
     : null;
   const avgMaxSpeed = hasCvData
-    ? (cvMetrics.reduce((s, m) => s + m.max_speed_kmh, 0) / cvMetrics.length).toFixed(1)
+    ? (
+        cvMetrics.reduce((s, m) => s + m.max_speed_kmh, 0) / cvMetrics.length
+      ).toFixed(1)
     : null;
   const avgSprints = hasCvData
-    ? Math.round(cvMetrics.reduce((s, m) => s + m.sprint_count, 0) / cvMetrics.length)
+    ? Math.round(
+        cvMetrics.reduce((s, m) => s + m.sprint_count, 0) / cvMetrics.length
+      )
     : null;
   const totalSprints = hasCvData
     ? cvMetrics.reduce((s, m) => s + m.sprint_count, 0)
     : null;
   const avgHSR = hasCvData
-    ? Math.round(cvMetrics.reduce((s, m) => s + m.high_speed_run_count, 0) / cvMetrics.length)
+    ? Math.round(
+        cvMetrics.reduce((s, m) => s + m.high_speed_run_count, 0) /
+          cvMetrics.length
+      )
     : null;
   const avgAccel = hasCvData
-    ? Math.round(cvMetrics.reduce((s, m) => s + m.accel_events, 0) / cvMetrics.length)
+    ? Math.round(
+        cvMetrics.reduce((s, m) => s + m.accel_events, 0) / cvMetrics.length
+      )
     : null;
   const avgDecel = hasCvData
-    ? Math.round(cvMetrics.reduce((s, m) => s + m.decel_events, 0) / cvMetrics.length)
+    ? Math.round(
+        cvMetrics.reduce((s, m) => s + m.decel_events, 0) / cvMetrics.length
+      )
     : null;
 
   const redFlags = loadRecords.filter((r) => r.risk_flag === "red");
@@ -219,8 +406,10 @@ export function SessionOverviewTab({
   const avgRecovery =
     recoveryMetrics.length > 0
       ? Math.round(
-          recoveryMetrics.reduce((s, m) => s + (m.hr_recovery_60s ?? 0), 0) /
-            recoveryMetrics.length
+          recoveryMetrics.reduce(
+            (s, m) => s + (m.hr_recovery_60s ?? 0),
+            0
+          ) / recoveryMetrics.length
         )
       : null;
 
@@ -247,6 +436,17 @@ export function SessionOverviewTab({
           : "text-green-500"
     : "";
 
+  const intensityHex = avgTrimp
+    ? avgTrimp > 200
+      ? "#ef4444"
+      : avgTrimp > 150
+        ? "#f97316"
+        : avgTrimp > 100
+          ? "#eab308"
+          : "#22c55e"
+    : "#888888";
+
+  /* ---- Empty state ---- */
   if (!hasData) {
     return (
       <div className="space-y-6">
@@ -256,11 +456,13 @@ export function SessionOverviewTab({
               <div className="rounded-full bg-muted p-4 mb-4">
                 <Activity className="h-8 w-8 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-1">No wearable data yet</h3>
+              <h3 className="text-lg font-semibold mb-1">
+                No wearable data yet
+              </h3>
               <p className="text-sm text-muted-foreground max-w-md">
-                This session doesn&apos;t have any heart rate data attached. Data will
-                appear here once players wear their chest straps during the
-                session.
+                This session doesn&apos;t have any heart rate data attached.
+                Data will appear here once players wear their chest straps
+                during the session.
               </p>
             </div>
           </CardContent>
@@ -283,25 +485,62 @@ export function SessionOverviewTab({
     );
   }
 
+  /* ---- Main render ---- */
   return (
-    <div className="space-y-6">
-      {/* AI Summary */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Brain className="h-4 w-4 text-violet-500" />
-            Session Analysis
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-base leading-relaxed">
+    <div className="space-y-8">
+      {/* =========================================================== */}
+      {/*  AI Session Analysis — gradient left border + brain glow     */}
+      {/* =========================================================== */}
+      <div
+        className="relative overflow-hidden rounded-xl border border-white/[0.08] bg-white/[0.03] backdrop-blur-xl"
+        style={{
+          boxShadow: "0 0 30px rgba(139,92,246,0.08), 0 0 60px rgba(0,212,255,0.04)",
+        }}
+      >
+        {/* Purple-to-cyan gradient left border */}
+        <div
+          className="absolute left-0 top-0 bottom-0 w-[3px]"
+          style={{
+            background: "linear-gradient(to bottom, #a855f7, #06b6d4)",
+          }}
+        />
+
+        <div className="pl-6 pr-5 py-5">
+          <div className="flex items-center gap-3 mb-3">
+            {/* Brain icon with glow */}
+            <div
+              className="relative flex h-9 w-9 items-center justify-center rounded-full"
+              style={{
+                background: "rgba(139,92,246,0.15)",
+                boxShadow: "0 0 20px rgba(139,92,246,0.3), 0 0 40px rgba(139,92,246,0.1)",
+              }}
+            >
+              <Brain className="h-5 w-5 text-violet-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-white">
+                Session Analysis
+              </h2>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Brain className="h-3 w-3 text-violet-400/60" />
+                <span className="text-[10px] uppercase tracking-widest text-violet-400/60">
+                  Coach M8 AI
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-base leading-relaxed text-white/80">
             {session.type === "match"
               ? `Match session with ${metrics.length} players tracked. `
               : `Training session with ${metrics.length} players tracked. `}
             {intensityLabel && (
               <span>
                 Overall intensity was{" "}
-                <span className={`font-semibold ${intensityColor}`}>
+                <span
+                  className={`font-semibold ${intensityColor}`}
+                  style={{ textShadow: `0 0 10px ${intensityHex}50` }}
+                >
                   {intensityLabel.toLowerCase()}
                 </span>{" "}
                 (avg TRIMP: {avgTrimp}).{" "}
@@ -318,128 +557,180 @@ export function SessionOverviewTab({
                 ? `${amberFlags.length} player${amberFlags.length > 1 ? "s" : ""} in the caution zone for load management.`
                 : "No injury risk flags from this session."}
           </p>
-          <div className="flex items-center gap-1.5 mt-3">
-            <Brain className="h-3 w-3 text-violet-400" />
-            <span className="text-xs text-violet-400">
-              Coach M8 AI — auto-generated from session data
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Key Metrics Grid */}
-      <div className="flex flex-wrap gap-3">
-        <StatCard
-          icon={Heart}
-          label="Avg Heart Rate"
-          value={`${avgHr} bpm`}
-          color="text-red-500"
-          infoTerm="hr-avg"
-          analysis={avgHr ? `Team averaged ${avgHr} bpm this session. ${avgHr > 160 ? "High intensity — monitor recovery." : avgHr > 140 ? "Moderate-high effort — good for development." : "Lower intensity — appropriate for technical/recovery work."}` : undefined}
-          players={[...metrics].sort((a, b) => b.hr_avg - a.hr_avg).slice(0, 5).map(m => ({
-            name: m.players?.name ?? "Unknown",
-            jersey: m.players?.jersey_number ?? 0,
-            value: `${m.hr_avg} bpm`,
-          }))}
-        />
-        <StatCard
-          icon={TrendingUp}
-          label="Peak HR"
-          value={`${maxHr} bpm`}
-          subtitle={`Low: ${minHr} bpm`}
-          color="text-orange-500"
-          infoTerm="hr-max"
-          players={[...metrics].sort((a, b) => b.hr_max - a.hr_max).slice(0, 5).map(m => ({
-            name: m.players?.name ?? "Unknown",
-            jersey: m.players?.jersey_number ?? 0,
-            value: `${m.hr_max} bpm`,
-          }))}
-        />
-        <StatCard
-          icon={Zap}
-          label="Avg TRIMP"
-          value={avgTrimp ?? "--"}
-          subtitle={intensityLabel ?? undefined}
-          color={intensityColor || "text-muted-foreground"}
-          infoTerm="trimp"
-          analysis={avgTrimp ? `Session load averaged ${avgTrimp} TRIMP. ${intensityLabel ? `Classified as ${intensityLabel.toLowerCase()} intensity.` : ""}` : undefined}
-          players={[...metrics].sort((a, b) => b.trimp_score - a.trimp_score).slice(0, 5).map(m => ({
-            name: m.players?.name ?? "Unknown",
-            jersey: m.players?.jersey_number ?? 0,
-            value: Math.round(m.trimp_score),
-          }))}
-        />
-        <StatCard
-          icon={Users}
-          label="Players Tracked"
-          value={metrics.length}
-          color="text-blue-500"
-          infoTerm="players-tracked"
-        />
-        <StatCard
-          icon={Clock}
-          label="Duration"
-          value={
-            session.duration_minutes
-              ? `${session.duration_minutes} min`
-              : "--"
-          }
-          color="text-muted-foreground"
-        />
-        <StatCard
-          icon={AlertTriangle}
-          label="Risk Flags"
-          infoTerm="risk-flag"
-          value={
-            redFlags.length + amberFlags.length === 0
-              ? "None"
-              : `${redFlags.length + amberFlags.length}`
-          }
-          subtitle={
-            redFlags.length > 0
-              ? `${redFlags.length} red, ${amberFlags.length} amber`
-              : amberFlags.length > 0
-                ? `${amberFlags.length} caution`
-                : "All clear"
-          }
-          color={
-            redFlags.length > 0
-              ? "text-red-500"
-              : amberFlags.length > 0
-                ? "text-amber-500"
-                : "text-green-500"
-          }
-        />
+        </div>
       </div>
 
-      {/* Physical Performance Metrics (from CV Pipeline) */}
+      {/* =========================================================== */}
+      {/*  HR Metrics — connected strip                                */}
+      {/* =========================================================== */}
+      <div>
+        <SectionHeader
+          title="Heart Rate Monitoring"
+          gradient="bg-gradient-to-r from-red-500/40 to-transparent"
+        />
+        <div className="flex flex-wrap gap-2">
+          <StatCard
+            icon={Heart}
+            label="Avg Heart Rate"
+            value={`${avgHr} bpm`}
+            color="text-red-500"
+            accentHex="#ef4444"
+            infoTerm="hr-avg"
+            analysis={
+              avgHr
+                ? `Team averaged ${avgHr} bpm this session. ${avgHr > 160 ? "High intensity — monitor recovery." : avgHr > 140 ? "Moderate-high effort — good for development." : "Lower intensity — appropriate for technical/recovery work."}`
+                : undefined
+            }
+            players={[...metrics]
+              .sort((a, b) => b.hr_avg - a.hr_avg)
+              .slice(0, 5)
+              .map((m) => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${m.hr_avg} bpm`,
+              }))}
+          />
+          <StatCard
+            icon={TrendingUp}
+            label="Peak HR"
+            value={`${maxHr} bpm`}
+            subtitle={`Low: ${minHr} bpm`}
+            color="text-orange-500"
+            accentHex="#f97316"
+            infoTerm="hr-max"
+            players={[...metrics]
+              .sort((a, b) => b.hr_max - a.hr_max)
+              .slice(0, 5)
+              .map((m) => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: `${m.hr_max} bpm`,
+              }))}
+          />
+          <StatCard
+            icon={Zap}
+            label="Avg TRIMP"
+            value={avgTrimp ?? "--"}
+            subtitle={intensityLabel ?? undefined}
+            color={intensityColor || "text-muted-foreground"}
+            accentHex={intensityHex}
+            infoTerm="trimp"
+            analysis={
+              avgTrimp
+                ? `Session load averaged ${avgTrimp} TRIMP. ${intensityLabel ? `Classified as ${intensityLabel.toLowerCase()} intensity.` : ""}`
+                : undefined
+            }
+            players={[...metrics]
+              .sort((a, b) => b.trimp_score - a.trimp_score)
+              .slice(0, 5)
+              .map((m) => ({
+                name: m.players?.name ?? "Unknown",
+                jersey: m.players?.jersey_number ?? 0,
+                value: Math.round(m.trimp_score),
+              }))}
+          />
+          <StatCard
+            icon={Users}
+            label="Players Tracked"
+            value={metrics.length}
+            color="text-blue-500"
+            accentHex="#3b82f6"
+            infoTerm="players-tracked"
+          />
+          <StatCard
+            icon={Clock}
+            label="Duration"
+            value={
+              session.duration_minutes
+                ? `${session.duration_minutes} min`
+                : "--"
+            }
+            color="text-white/60"
+            accentHex="#64748b"
+          />
+          <StatCard
+            icon={AlertTriangle}
+            label="Risk Flags"
+            infoTerm="risk-flag"
+            value={
+              redFlags.length + amberFlags.length === 0
+                ? "None"
+                : `${redFlags.length + amberFlags.length}`
+            }
+            subtitle={
+              redFlags.length > 0
+                ? `${redFlags.length} red, ${amberFlags.length} amber`
+                : amberFlags.length > 0
+                  ? `${amberFlags.length} caution`
+                  : "All clear"
+            }
+            color={
+              redFlags.length > 0
+                ? "text-red-500"
+                : amberFlags.length > 0
+                  ? "text-amber-500"
+                  : "text-green-500"
+            }
+            accentHex={
+              redFlags.length > 0
+                ? "#ef4444"
+                : amberFlags.length > 0
+                  ? "#f59e0b"
+                  : "#22c55e"
+            }
+          />
+        </div>
+      </div>
+
+      {/* =========================================================== */}
+      {/*  CV Pipeline — Physical Performance                          */}
+      {/* =========================================================== */}
       {hasCvData && (
         <div>
-          <h3 className="text-sm font-semibold text-white/80 mb-3 uppercase tracking-wider">Physical Performance — Video Tracking</h3>
-          <div className="flex flex-wrap gap-3">
+          <SectionHeader
+            title="Physical Performance -- Video Tracking"
+            gradient="bg-gradient-to-r from-cyan-500/40 to-transparent"
+            pulseDot
+            pulseDotColor="#06b6d4"
+          />
+          <div className="flex flex-wrap gap-2">
             <StatCard
               icon={Activity}
               label="Avg Distance"
-              value={avgDistance ? `${(avgDistance / 1000).toFixed(1)} km` : "--"}
+              value={
+                avgDistance ? `${(avgDistance / 1000).toFixed(1)} km` : "--"
+              }
               color="text-[#00d4ff]"
-              analysis={avgDistance ? `Team covered an average of ${(avgDistance / 1000).toFixed(1)} km per player. ${avgDistance > 6000 ? "High volume — great work rate across the squad." : avgDistance > 5000 ? "Good coverage for a training session." : "Lower distance — likely technical or tactical focused session."}` : undefined}
-              players={[...cvMetrics].sort((a, b) => b.total_distance_m - a.total_distance_m).slice(0, 5).map(m => ({
-                name: m.players?.name ?? "Unknown",
-                jersey: m.players?.jersey_number ?? 0,
-                value: `${(m.total_distance_m / 1000).toFixed(1)} km`,
-              }))}
+              accentHex="#00d4ff"
+              analysis={
+                avgDistance
+                  ? `Team covered an average of ${(avgDistance / 1000).toFixed(1)} km per player. ${avgDistance > 6000 ? "High volume — great work rate across the squad." : avgDistance > 5000 ? "Good coverage for a training session." : "Lower distance — likely technical or tactical focused session."}`
+                  : undefined
+              }
+              players={[...cvMetrics]
+                .sort((a, b) => b.total_distance_m - a.total_distance_m)
+                .slice(0, 5)
+                .map((m) => ({
+                  name: m.players?.name ?? "Unknown",
+                  jersey: m.players?.jersey_number ?? 0,
+                  value: `${(m.total_distance_m / 1000).toFixed(1)} km`,
+                }))}
             />
             <StatCard
               icon={Zap}
               label="Top Speed"
               value={avgMaxSpeed ? `${avgMaxSpeed} km/h` : "--"}
               color="text-[#00ff88]"
+              accentHex="#00ff88"
               analysis="Peak speed reached during sprints. Compare to age-group benchmarks: U16 elite = 28-32 km/h."
-              players={[...cvMetrics].sort((a, b) => b.max_speed_kmh - a.max_speed_kmh).slice(0, 5).map(m => ({
-                name: m.players?.name ?? "Unknown",
-                jersey: m.players?.jersey_number ?? 0,
-                value: `${m.max_speed_kmh.toFixed(1)} km/h`,
-              }))}
+              players={[...cvMetrics]
+                .sort((a, b) => b.max_speed_kmh - a.max_speed_kmh)
+                .slice(0, 5)
+                .map((m) => ({
+                  name: m.players?.name ?? "Unknown",
+                  jersey: m.players?.jersey_number ?? 0,
+                  value: `${m.max_speed_kmh.toFixed(1)} km/h`,
+                }))}
             />
             <StatCard
               icon={Zap}
@@ -447,12 +738,16 @@ export function SessionOverviewTab({
               value={avgSprints ?? "--"}
               subtitle={totalSprints ? `${totalSprints} total` : undefined}
               color="text-[#ff6b35]"
+              accentHex="#ff6b35"
               analysis="Sprints above 20 km/h. More sprints = higher intensity. Compare across sessions to track explosive capacity development."
-              players={[...cvMetrics].sort((a, b) => b.sprint_count - a.sprint_count).slice(0, 5).map(m => ({
-                name: m.players?.name ?? "Unknown",
-                jersey: m.players?.jersey_number ?? 0,
-                value: `${m.sprint_count} sprints`,
-              }))}
+              players={[...cvMetrics]
+                .sort((a, b) => b.sprint_count - a.sprint_count)
+                .slice(0, 5)
+                .map((m) => ({
+                  name: m.players?.name ?? "Unknown",
+                  jersey: m.players?.jersey_number ?? 0,
+                  value: `${m.sprint_count} sprints`,
+                }))}
             />
             <StatCard
               icon={TrendingUp}
@@ -460,25 +755,36 @@ export function SessionOverviewTab({
               value={avgHSR ?? "--"}
               subtitle=">15 km/h"
               color="text-[#a855f7]"
+              accentHex="#a855f7"
               analysis="Runs above 15 km/h. Includes both sprints and high-tempo runs. Key indicator of work rate and physical capacity."
-              players={[...cvMetrics].sort((a, b) => b.high_speed_run_count - a.high_speed_run_count).slice(0, 5).map(m => ({
-                name: m.players?.name ?? "Unknown",
-                jersey: m.players?.jersey_number ?? 0,
-                value: `${m.high_speed_run_count} runs`,
-              }))}
+              players={[...cvMetrics]
+                .sort(
+                  (a, b) =>
+                    b.high_speed_run_count - a.high_speed_run_count
+                )
+                .slice(0, 5)
+                .map((m) => ({
+                  name: m.players?.name ?? "Unknown",
+                  jersey: m.players?.jersey_number ?? 0,
+                  value: `${m.high_speed_run_count} runs`,
+                }))}
             />
             <StatCard
               icon={TrendingUp}
               label="Accelerations"
               value={avgAccel ?? "--"}
-              subtitle=">2.5 m/s²"
+              subtitle=">2.5 m/s\u00B2"
               color="text-[#00d4ff]"
-              analysis="Sharp acceleration events above 2.5 m/s². High acceleration count indicates explosive playing style — pressing, counter-attacks, and off-the-ball runs."
-              players={[...cvMetrics].sort((a, b) => b.accel_events - a.accel_events).slice(0, 5).map(m => ({
-                name: m.players?.name ?? "Unknown",
-                jersey: m.players?.jersey_number ?? 0,
-                value: `${m.accel_events} events`,
-              }))}
+              accentHex="#00d4ff"
+              analysis="Sharp acceleration events above 2.5 m/s\u00B2. High acceleration count indicates explosive playing style — pressing, counter-attacks, and off-the-ball runs."
+              players={[...cvMetrics]
+                .sort((a, b) => b.accel_events - a.accel_events)
+                .slice(0, 5)
+                .map((m) => ({
+                  name: m.players?.name ?? "Unknown",
+                  jersey: m.players?.jersey_number ?? 0,
+                  value: `${m.accel_events} events`,
+                }))}
             />
             <StatCard
               icon={AlertTriangle}
@@ -486,45 +792,72 @@ export function SessionOverviewTab({
               value={avgDecel ?? "--"}
               subtitle="Injury predictor"
               color="text-[#ff3355]"
-              analysis="Deceleration events above 2.5 m/s². This is the STRONGEST single predictor of soft tissue injuries. Players with consistently high deceleration loads need careful monitoring."
-              players={[...cvMetrics].sort((a, b) => b.decel_events - a.decel_events).slice(0, 5).map(m => ({
-                name: m.players?.name ?? "Unknown",
-                jersey: m.players?.jersey_number ?? 0,
-                value: `${m.decel_events} events`,
-              }))}
+              accentHex="#ff3355"
+              analysis="Deceleration events above 2.5 m/s\u00B2. This is the STRONGEST single predictor of soft tissue injuries. Players with consistently high deceleration loads need careful monitoring."
+              players={[...cvMetrics]
+                .sort((a, b) => b.decel_events - a.decel_events)
+                .slice(0, 5)
+                .map((m) => ({
+                  name: m.players?.name ?? "Unknown",
+                  jersey: m.players?.jersey_number ?? 0,
+                  value: `${m.decel_events} events`,
+                }))}
             />
             <StatCard
               icon={Users}
               label="Movement Score"
-              value={hasCvData ? Math.round(cvMetrics.reduce((s, m) => s + (m.off_ball_movement_score ?? 0), 0) / cvMetrics.length) : "--"}
+              value={
+                hasCvData
+                  ? Math.round(
+                      cvMetrics.reduce(
+                        (s, m) => s + (m.off_ball_movement_score ?? 0),
+                        0
+                      ) / cvMetrics.length
+                    )
+                  : "--"
+              }
               subtitle="Off-ball quality"
               color="text-[#00ff88]"
+              accentHex="#00ff88"
+              isCircularScore
               analysis="AI-derived score (0-100) measuring the quality of a player's movement when they don't have the ball. Higher = better positioning, more intelligent runs."
-              players={[...cvMetrics].filter(m => m.off_ball_movement_score != null).sort((a, b) => (b.off_ball_movement_score ?? 0) - (a.off_ball_movement_score ?? 0)).slice(0, 5).map(m => ({
-                name: m.players?.name ?? "Unknown",
-                jersey: m.players?.jersey_number ?? 0,
-                value: `${Math.round(m.off_ball_movement_score ?? 0)}/100`,
-              }))}
+              players={[...cvMetrics]
+                .filter((m) => m.off_ball_movement_score != null)
+                .sort(
+                  (a, b) =>
+                    (b.off_ball_movement_score ?? 0) -
+                    (a.off_ball_movement_score ?? 0)
+                )
+                .slice(0, 5)
+                .map((m) => ({
+                  name: m.players?.name ?? "Unknown",
+                  jersey: m.players?.jersey_number ?? 0,
+                  value: `${Math.round(m.off_ball_movement_score ?? 0)}/100`,
+                }))}
             />
           </div>
         </div>
       )}
 
-      {/* Two-column: Zone Distribution + Top Performers */}
+      {/* =========================================================== */}
+      {/*  Zone Distribution + Top Performers + Alerts                 */}
+      {/* =========================================================== */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Team Zone Distribution */}
         {avgZones && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">
-                <MetricInfo term="hr-zones">Team HR Zone Distribution</MetricInfo>
+                <MetricInfo term="hr-zones">
+                  Team HR Zone Distribution
+                </MetricInfo>
               </CardTitle>
               <CardDescription>
                 Average time spent in each zone across all players
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 {(
                   [
                     { zone: 1 as HrZone, pct: avgZones.z1 },
@@ -538,22 +871,26 @@ export function SessionOverviewTab({
                     <div className="flex items-center gap-2 w-24">
                       <div
                         className="h-3 w-3 rounded-full shrink-0"
-                        style={{ backgroundColor: HR_ZONE_COLORS[zone] }}
+                        style={{
+                          backgroundColor: HR_ZONE_COLORS[zone],
+                          boxShadow: `0 0 6px ${HR_ZONE_COLORS[zone]}60`,
+                        }}
                       />
-                      <span className="text-xs font-medium">
+                      <span className="text-[10px] uppercase tracking-widest text-white/50 font-medium">
                         {HR_ZONE_LABELS[zone]}
                       </span>
                     </div>
-                    <div className="flex-1 h-4 bg-muted rounded-full overflow-hidden">
+                    <div className="flex-1 h-5 bg-white/[0.04] rounded-full overflow-hidden">
                       <div
-                        className="h-full rounded-full transition-all"
+                        className="h-full rounded-full transition-all duration-700"
                         style={{
                           width: `${Math.min(pct, 100)}%`,
                           backgroundColor: HR_ZONE_COLORS[zone],
+                          boxShadow: `0 0 12px ${HR_ZONE_COLORS[zone]}40, inset 0 1px 0 rgba(255,255,255,0.2)`,
                         }}
                       />
                     </div>
-                    <span className="text-sm font-semibold w-10 text-right">
+                    <span className="text-sm font-bold font-mono w-10 text-right">
                       {pct}%
                     </span>
                   </div>
@@ -569,32 +906,39 @@ export function SessionOverviewTab({
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Top Performers</CardTitle>
-                <CardDescription>Highest training load (TRIMP)</CardDescription>
+                <CardDescription>
+                  Highest training load (TRIMP)
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   {topPerformers.map((m, i) => (
                     <div
                       key={m.players?.jersey_number ?? i}
-                      className="flex items-center justify-between"
+                      className="flex items-center justify-between group/performer rounded-lg px-3 py-2.5 -mx-3 transition-all hover:bg-white/[0.04]"
                     >
                       <div className="flex items-center gap-3">
-                        <span
-                          className={`text-lg font-bold ${i === 0 ? "text-amber-500" : i === 1 ? "text-gray-400" : "text-amber-700"}`}
-                        >
-                          {i + 1}
-                        </span>
+                        <RankIcon rank={i} />
+                        <PlayerAvatar
+                          name={m.players?.name ?? "?"}
+                          rank={i}
+                        />
                         <div>
                           <p className="text-sm font-medium">
-                            #{m.players?.jersey_number} {m.players?.name}
+                            <span className="font-mono text-white/50">
+                              #{m.players?.jersey_number}
+                            </span>{" "}
+                            {m.players?.name}
                           </p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-[10px] uppercase tracking-widest text-white/40">
                             {m.players?.position} — HR avg {m.hr_avg} bpm
                           </p>
                         </div>
                       </div>
                       <Badge variant="secondary">
-                        TRIMP {Math.round(m.trimp_score)}
+                        <span className="font-mono">
+                          TRIMP {Math.round(m.trimp_score)}
+                        </span>
                       </Badge>
                     </div>
                   ))}
@@ -603,7 +947,7 @@ export function SessionOverviewTab({
             </Card>
           )}
 
-          {/* Risk flags summary */}
+          {/* Risk flags summary — animated left border */}
           {(redFlags.length > 0 || amberFlags.length > 0) && (
             <Card>
               <CardHeader>
@@ -614,26 +958,48 @@ export function SessionOverviewTab({
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  {[...redFlags, ...amberFlags].slice(0, 5).map((r) => (
-                    <div
-                      key={r.player_id}
-                      className={`flex items-center justify-between p-2 rounded-lg text-sm border ${r.risk_flag === "red" ? "bg-[#ff3355]/10 border-[#ff3355]/20" : "bg-[#ff6b35]/10 border-[#ff6b35]/20"}`}
-                    >
-                      <span className="font-medium">
-                        #{r.players.jersey_number} {r.players.name}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className={
-                          r.risk_flag === "red"
-                            ? "bg-[#ff3355]/15 text-[#ff3355] border-[#ff3355]/30 font-mono"
-                            : "bg-[#ff6b35]/15 text-[#ff6b35] border-[#ff6b35]/30 font-mono"
-                        }
+                  {[...redFlags, ...amberFlags].slice(0, 5).map((r) => {
+                    const isRed = r.risk_flag === "red";
+                    const borderColor = isRed ? "#ff3355" : "#ff6b35";
+
+                    return (
+                      <div
+                        key={r.player_id}
+                        className="relative flex items-center justify-between p-3 rounded-lg text-sm overflow-hidden"
+                        style={{
+                          background: isRed
+                            ? "rgba(255,51,85,0.08)"
+                            : "rgba(255,107,53,0.08)",
+                          border: `1px solid ${borderColor}20`,
+                        }}
                       >
-                        ACWR {r.acwr_ratio}
-                      </Badge>
-                    </div>
-                  ))}
+                        {/* Animated left border */}
+                        <div
+                          className="absolute left-0 top-0 bottom-0 w-[3px]"
+                          style={{
+                            background: borderColor,
+                            boxShadow: `0 0 8px ${borderColor}60`,
+                            animation: isRed
+                              ? "pulse 2s ease-in-out infinite"
+                              : undefined,
+                          }}
+                        />
+                        <span className="font-medium pl-2">
+                          #{r.players.jersey_number} {r.players.name}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={
+                            isRed
+                              ? "bg-[#ff3355]/15 text-[#ff3355] border-[#ff3355]/30 font-mono"
+                              : "bg-[#ff6b35]/15 text-[#ff6b35] border-[#ff6b35]/30 font-mono"
+                          }
+                        >
+                          ACWR {r.acwr_ratio}
+                        </Badge>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -643,16 +1009,22 @@ export function SessionOverviewTab({
           {avgRecovery !== null && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">
-                  Team Recovery
-                </CardTitle>
+                <CardTitle className="text-base">Team Recovery</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-2xl font-bold">{avgRecovery} bpm</p>
-                <p className="text-xs text-muted-foreground">
-                  Average HR drop in first 60 seconds post-session
+                <p
+                  className="text-3xl font-bold font-mono"
+                  style={{ textShadow: "0 0 12px rgba(34,197,94,0.3)" }}
+                >
+                  {avgRecovery}{" "}
+                  <span className="text-sm font-normal text-white/40">
+                    bpm
+                  </span>
                 </p>
-                <p className="text-xs mt-1">
+                <p className="text-[10px] uppercase tracking-widest text-white/40 mt-1">
+                  Average HR drop in first 60s post-session
+                </p>
+                <p className="text-xs text-white/60 mt-2">
                   {avgRecovery > 30
                     ? "Excellent recovery — team is well conditioned"
                     : avgRecovery > 20
@@ -665,7 +1037,9 @@ export function SessionOverviewTab({
         </div>
       </div>
 
-      {/* Coach Notes */}
+      {/* =========================================================== */}
+      {/*  Coach Notes                                                 */}
+      {/* =========================================================== */}
       {session.notes && (
         <Card>
           <CardHeader>
@@ -675,7 +1049,9 @@ export function SessionOverviewTab({
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm">{session.notes}</p>
+            <p className="text-sm leading-relaxed text-white/70">
+              {session.notes}
+            </p>
           </CardContent>
         </Card>
       )}
