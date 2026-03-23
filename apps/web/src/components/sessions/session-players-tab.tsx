@@ -36,14 +36,28 @@ interface LoadRecord {
   acwr_ratio: number;
 }
 
+interface CvMetric {
+  player_id: string;
+  total_distance_m: number;
+  max_speed_kmh: number;
+  sprint_count: number;
+  high_speed_run_count: number;
+  accel_events: number;
+  decel_events: number;
+  off_ball_movement_score: number | null;
+}
+
 export function SessionPlayersTab({
   metrics,
+  cvMetrics = [],
   loadRecords,
 }: {
   metrics: PlayerMetric[];
+  cvMetrics?: CvMetric[];
   loadRecords: LoadRecord[];
 }) {
   const loadMap = new Map(loadRecords.map((r) => [r.player_id, r]));
+  const cvMap = new Map(cvMetrics.map((c) => [c.player_id, c]));
 
   const sorted = [...metrics].sort(
     (a, b) => a.players.jersey_number - b.players.jersey_number
@@ -66,6 +80,8 @@ export function SessionPlayersTab({
           .map((n) => n[0])
           .join("")
           .slice(0, 2);
+
+        const cv = cvMap.get(m.player_id);
 
         return (
           <Card key={m.id}>
@@ -136,6 +152,53 @@ export function SessionPlayersTab({
                 <p className="text-xs text-muted-foreground mt-2">
                   HR Recovery (60s): {m.hr_recovery_60s} bpm
                 </p>
+              )}
+
+              {/* CV Metrics row */}
+              {cv && (
+                <div className="mt-3 pt-3 border-t border-white/[0.06]">
+                  <p className="text-[10px] text-white/40 uppercase tracking-wider mb-2">Video Tracking</p>
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs mb-2">
+                    <div className="rounded-md bg-white/[0.03] border border-white/[0.05] p-1.5">
+                      <p className="font-mono font-semibold text-[#00d4ff]">
+                        {(cv.total_distance_m / 1000).toFixed(1)} km
+                      </p>
+                      <p className="text-[9px] text-white/40">Distance</p>
+                    </div>
+                    <div className="rounded-md bg-white/[0.03] border border-white/[0.05] p-1.5">
+                      <p className="font-mono font-semibold text-[#00ff88]">
+                        {cv.max_speed_kmh.toFixed(1)} km/h
+                      </p>
+                      <p className="text-[9px] text-white/40">Top Speed</p>
+                    </div>
+                    <div className="rounded-md bg-white/[0.03] border border-white/[0.05] p-1.5">
+                      <p className="font-mono font-semibold text-[#ff6b35]">
+                        {cv.sprint_count}
+                      </p>
+                      <p className="text-[9px] text-white/40">Sprints</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                    <div className="rounded-md bg-white/[0.03] border border-white/[0.05] p-1.5">
+                      <p className="font-mono font-semibold text-[#00d4ff]">
+                        {cv.accel_events}
+                      </p>
+                      <p className="text-[9px] text-white/40">Accels</p>
+                    </div>
+                    <div className="rounded-md bg-white/[0.03] border border-white/[0.05] p-1.5">
+                      <p className="font-mono font-semibold text-[#ff3355]">
+                        {cv.decel_events}
+                      </p>
+                      <p className="text-[9px] text-white/40">Decels</p>
+                    </div>
+                    <div className="rounded-md bg-white/[0.03] border border-white/[0.05] p-1.5">
+                      <p className="font-mono font-semibold text-[#a855f7]">
+                        {cv.off_ball_movement_score !== null ? Math.round(cv.off_ball_movement_score) : "—"}
+                      </p>
+                      <p className="text-[9px] text-white/40">Mvmt</p>
+                    </div>
+                  </div>
+                </div>
               )}
 
               <div className="mt-3">

@@ -147,6 +147,7 @@ export default async function SessionDetailPage({
         <TabsContent value="players">
           <SessionPlayersTab
             metrics={(session.wearable_metrics as any[]) ?? []}
+            cvMetrics={(cvMetrics as any[]) ?? []}
             loadRecords={loadRecords as any}
           />
         </TabsContent>

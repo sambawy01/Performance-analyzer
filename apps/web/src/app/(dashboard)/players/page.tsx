@@ -53,6 +53,12 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
     .select("player_id, hr_avg, hr_max, trimp_score, hr_recovery_60s")
     .order("created_at", { ascending: false });
 
+  // Fetch latest CV metrics per player
+  const { data: cvData } = await supabase
+    .from("cv_metrics")
+    .select("player_id, total_distance_m, max_speed_kmh, sprint_count")
+    .order("created_at", { ascending: false });
+
   // Fetch session count per player (last 28 days)
   const since28d = new Date();
   since28d.setDate(since28d.getDate() - 28);
@@ -77,6 +83,12 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
     sessionCountMap.set(s.player_id, (sessionCountMap.get(s.player_id) ?? 0) + 1);
   }
 
+  // Build CV metrics map (latest per player)
+  const cvMap = new Map<string, any>();
+  for (const c of cvData ?? []) {
+    if (!cvMap.has(c.player_id)) cvMap.set(c.player_id, c);
+  }
+
   // Enrich players
   const enrichedPlayers = (players ?? []).map((p) => ({
     ...p,
@@ -86,6 +98,9 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
     trimp: metricsMap.get(p.id)?.trimp_score ?? null,
     recovery: metricsMap.get(p.id)?.hr_recovery_60s ?? null,
     sessions28d: sessionCountMap.get(p.id) ?? 0,
+    distance: cvMap.get(p.id)?.total_distance_m ?? null,
+    maxSpeed: cvMap.get(p.id)?.max_speed_kmh ?? null,
+    sprintCount: cvMap.get(p.id)?.sprint_count ?? null,
   }));
 
   return (
@@ -94,7 +109,7 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
         <div>
           <h2 className="text-2xl font-bold">Squad ({enrichedPlayers.length})</h2>
           <p className="text-sm text-white/50">
-            {loadMap.size} with load data | {metricsMap.size} with wearable data
+            {loadMap.size} with load data | {metricsMap.size} with wearable data | {cvMap.size} with CV data
           </p>
         </div>
       </div>

@@ -39,7 +39,7 @@ export default async function ComparePage() {
   // Latest CV metrics
   const { data: cvMetrics } = await supabase
     .from("cv_metrics")
-    .select("player_id, max_speed_kmh, sprint_count")
+    .select("player_id, total_distance_m, max_speed_kmh, sprint_count, high_speed_run_count, accel_events, decel_events, off_ball_movement_score")
     .order("created_at", { ascending: false });
 
   // Build lookup maps (latest per player)
@@ -53,7 +53,15 @@ export default async function ComparePage() {
     if (!metricsMap.has(m.player_id)) metricsMap.set(m.player_id, m);
   }
 
-  const cvMap = new Map<string, { max_speed_kmh: number; sprint_count: number }>();
+  const cvMap = new Map<string, {
+    total_distance_m: number;
+    max_speed_kmh: number;
+    sprint_count: number;
+    high_speed_run_count: number;
+    accel_events: number;
+    decel_events: number;
+    off_ball_movement_score: number | null;
+  }>();
   for (const c of cvMetrics ?? []) {
     if (!cvMap.has(c.player_id)) cvMap.set(c.player_id, c);
   }
@@ -68,6 +76,11 @@ export default async function ComparePage() {
     recovery: metricsMap.get(p.id)?.hr_recovery_60s ?? null,
     maxSpeedKmh: cvMap.get(p.id)?.max_speed_kmh ?? null,
     sprintCount: cvMap.get(p.id)?.sprint_count ?? null,
+    distanceKm: cvMap.get(p.id) ? cvMap.get(p.id)!.total_distance_m / 1000 : null,
+    hsrCount: cvMap.get(p.id)?.high_speed_run_count ?? null,
+    accelEvents: cvMap.get(p.id)?.accel_events ?? null,
+    decelEvents: cvMap.get(p.id)?.decel_events ?? null,
+    movementScore: cvMap.get(p.id)?.off_ball_movement_score ?? null,
   }));
 
   return (

@@ -20,6 +20,11 @@ interface EnrichedPlayer {
   recovery: number | null;
   maxSpeedKmh: number | null;
   sprintCount: number | null;
+  distanceKm: number | null;
+  hsrCount: number | null;
+  accelEvents: number | null;
+  decelEvents: number | null;
+  movementScore: number | null;
 }
 
 interface PlayerComparisonProps {
@@ -34,6 +39,11 @@ const METRICS: { key: keyof EnrichedPlayer; label: string; unit?: string; higher
   { key: "acwr", label: "ACWR", higherBetter: false },
   { key: "maxSpeedKmh", label: "Max Speed", unit: "km/h", higherBetter: true },
   { key: "sprintCount", label: "Sprint Count", higherBetter: true },
+  { key: "distanceKm", label: "Distance", unit: "km", higherBetter: true },
+  { key: "hsrCount", label: "High Speed Runs", higherBetter: true },
+  { key: "accelEvents", label: "Accelerations", higherBetter: true },
+  { key: "decelEvents", label: "Decelerations", higherBetter: false },
+  { key: "movementScore", label: "Movement Score", higherBetter: true },
 ];
 
 // Absolute ranges for meaningful normalization (not relative to selected players)
@@ -45,6 +55,11 @@ const ABSOLUTE_RANGES: Record<string, { min: number; max: number }> = {
   acwr: { min: 0.6, max: 1.8 },
   maxSpeedKmh: { min: 18, max: 35 },
   sprintCount: { min: 3, max: 30 },
+  distanceKm: { min: 3, max: 12 },
+  hsrCount: { min: 5, max: 50 },
+  accelEvents: { min: 5, max: 60 },
+  decelEvents: { min: 5, max: 60 },
+  movementScore: { min: 0, max: 100 },
 };
 
 function normalize(value: number | null, key: string, higherBetter: boolean): number {
@@ -122,7 +137,7 @@ export function PlayerComparison({ players }: PlayerComparisonProps) {
     setAiAnalysis(null);
     try {
       const playerSummaries = selectedPlayers.map((p) =>
-        `${p.name} (#${p.jersey_number}, ${p.position}, ${p.age_group}): ACWR=${p.acwr ?? "N/A"} (${p.riskFlag ?? "N/A"}), TRIMP=${p.trimp ?? "N/A"}, HR avg=${p.hrAvg ?? "N/A"}, Recovery=${p.recovery ?? "N/A"} bpm, Max Speed=${p.maxSpeedKmh ?? "N/A"} km/h, Sprints=${p.sprintCount ?? "N/A"}`
+        `${p.name} (#${p.jersey_number}, ${p.position}, ${p.age_group}): ACWR=${p.acwr ?? "N/A"} (${p.riskFlag ?? "N/A"}), TRIMP=${p.trimp ?? "N/A"}, HR avg=${p.hrAvg ?? "N/A"}, Recovery=${p.recovery ?? "N/A"} bpm, Max Speed=${p.maxSpeedKmh ?? "N/A"} km/h, Sprints=${p.sprintCount ?? "N/A"}, Distance=${p.distanceKm !== null ? p.distanceKm.toFixed(2) + " km" : "N/A"}, HSR=${p.hsrCount ?? "N/A"}, Accels=${p.accelEvents ?? "N/A"}, Decels=${p.decelEvents ?? "N/A"}, Movement Score=${p.movementScore ?? "N/A"}`
       ).join("\n");
 
       const question = `Compare these players:\n${playerSummaries}\n\nWho is better suited for each position? Who is improving faster? Who carries more injury risk? Give specific recommendations on who to start and who needs rest.`;

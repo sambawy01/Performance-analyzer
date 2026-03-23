@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Heart, Zap, Activity, TrendingUp, Shield } from "lucide-react";
+import { Heart, Zap, Activity, TrendingUp, Shield, Gauge } from "lucide-react";
 
 interface EnrichedPlayer {
   id: string;
@@ -17,6 +17,9 @@ interface EnrichedPlayer {
   trimp: number | null;
   recovery: number | null;
   sessions28d: number;
+  distance: number | null;
+  maxSpeed: number | null;
+  sprintCount: number | null;
 }
 
 function getAgeLabel(ageGroup: string): string {
@@ -110,6 +113,31 @@ export function PlayerCard({ player }: { player: EnrichedPlayer }) {
           ) : (
             <div className="rounded-lg bg-white/[0.02] border border-white/[0.04] p-3 mb-3 text-center">
               <p className="text-xs text-white/30">No wearable data yet</p>
+            </div>
+          )}
+
+          {/* CV Stats row */}
+          {(player.distance !== null || player.maxSpeed !== null || player.sprintCount !== null) && (
+            <div className="grid grid-cols-3 gap-2 mb-3">
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2 text-center">
+                <TrendingUp className="h-3 w-3 text-[#00d4ff] mx-auto mb-0.5" />
+                <p className="font-mono text-sm font-bold text-white">
+                  {player.distance !== null ? (player.distance / 1000).toFixed(1) : "—"}
+                </p>
+                <p className="text-[9px] text-white/40">km</p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2 text-center">
+                <Gauge className="h-3 w-3 text-[#00ff88] mx-auto mb-0.5" />
+                <p className="font-mono text-sm font-bold text-white">
+                  {player.maxSpeed !== null ? player.maxSpeed.toFixed(1) : "—"}
+                </p>
+                <p className="text-[9px] text-white/40">km/h</p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] p-2 text-center">
+                <Zap className="h-3 w-3 text-[#ff6b35] mx-auto mb-0.5" />
+                <p className="font-mono text-sm font-bold text-white">{player.sprintCount ?? "—"}</p>
+                <p className="text-[9px] text-white/40">sprints</p>
+              </div>
             </div>
           )}
 
