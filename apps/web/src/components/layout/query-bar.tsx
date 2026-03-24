@@ -118,13 +118,49 @@ export function QueryBar() {
 
       {/* Toggle button — fixed bottom-right */}
       {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-[999] h-14 w-14 rounded-full bg-gradient-to-br from-[#a855f7] to-[#00d4ff] flex items-center justify-center shadow-[0_0_30px_rgba(168,85,247,0.4)] hover:shadow-[0_0_40px_rgba(168,85,247,0.6)] hover:scale-110 transition-all duration-300"
-          title="Ask Coach M8 (⌘K)"
-        >
-          <Brain className="h-6 w-6 text-white" />
-        </button>
+        <div className="fixed bottom-6 right-6 z-[999]">
+          {/* Outer pulse ring */}
+          <div
+            className="absolute inset-0 rounded-full animate-ping"
+            style={{
+              background: "linear-gradient(135deg, rgba(168,85,247,0.3), rgba(0,212,255,0.3))",
+              animationDuration: "3s",
+            }}
+          />
+          {/* Glow ring */}
+          <div
+            className="absolute -inset-1 rounded-full opacity-60 animate-pulse-slow"
+            style={{
+              background: "linear-gradient(135deg, #a855f7, #00d4ff)",
+              filter: "blur(8px)",
+            }}
+          />
+          <button
+            onClick={() => setOpen(true)}
+            className="relative h-14 w-14 rounded-full flex items-center justify-center transition-all duration-300 hover:scale-110 group"
+            style={{
+              background: "linear-gradient(135deg, #a855f7, #6d28d9, #00d4ff)",
+              boxShadow: "0 0 25px rgba(168,85,247,0.5), 0 0 50px rgba(0,212,255,0.2), inset 0 1px 1px rgba(255,255,255,0.2)",
+            }}
+            title="Ask Coach M8 (⌘K)"
+          >
+            {/* Inner shimmer */}
+            <div
+              className="absolute inset-[2px] rounded-full opacity-40"
+              style={{
+                background: "radial-gradient(circle at 30% 30%, rgba(255,255,255,0.3), transparent 60%)",
+              }}
+            />
+            <Sparkles className="absolute h-3 w-3 text-white/50 top-2 right-2 animate-pulse" />
+            <Brain className="h-6 w-6 text-white relative z-10 drop-shadow-[0_0_4px_rgba(255,255,255,0.5)]" />
+          </button>
+          {/* Label */}
+          <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+            <span className="text-[10px] font-semibold text-white/60 bg-[#0a0e1a]/90 px-2 py-1 rounded-md border border-white/10">
+              Ask Coach M8
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Side panel */}
