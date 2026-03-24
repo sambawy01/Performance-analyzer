@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Debrief -- Coach M8" };
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { MatchDebrief } from "@/components/debrief/match-debrief";
 

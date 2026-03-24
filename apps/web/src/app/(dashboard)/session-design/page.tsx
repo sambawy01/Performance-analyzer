@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Session Design -- Coach M8" };
+
 import { Suspense } from "react";
 import { ClipboardList } from "lucide-react";
 import { SessionPlan } from "@/components/session-design/session-plan";

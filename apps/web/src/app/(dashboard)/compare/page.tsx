@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Compare -- Coach M8" };
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { PlayerComparison } from "@/components/compare/player-comparison";
 

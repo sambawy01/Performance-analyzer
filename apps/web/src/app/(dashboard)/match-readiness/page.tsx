@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Match Readiness -- Coach M8" };
+
 import { redirect } from "next/navigation";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { ReadinessClient } from "@/components/match-readiness/readiness-client";

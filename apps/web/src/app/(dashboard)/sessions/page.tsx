@@ -4,8 +4,12 @@ import { getSessions } from "@/lib/queries/sessions";
 import { SessionFilters } from "@/components/sessions/session-filters";
 import { CreateSessionDialog } from "@/components/sessions/create-session-dialog";
 import { SessionsListTable } from "@/components/sessions/sessions-list-table";
+import { EmptyState } from "@/components/ui/empty-state";
 import Link from "next/link";
-import { ClipboardCheck } from "lucide-react";
+import { ClipboardCheck, CalendarDays } from "lucide-react";
+
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Sessions -- Coach M8" };
 
 interface SessionsPageProps {
   searchParams: Promise<{
@@ -77,10 +81,20 @@ export default async function SessionsPage({ searchParams }: SessionsPageProps) 
         <SessionFilters />
       </Suspense>
 
-      <SessionsListTable
-        sessions={sessions as any}
-        attendanceCounts={attendanceCounts}
-      />
+      {sessions.length === 0 ? (
+        <EmptyState
+          icon={CalendarDays}
+          title="No sessions yet"
+          description="Create your first session or use Quick Log to start tracking your team's performance."
+          action={{ label: "Quick Log", href: "/log" }}
+          accentColor="#06b6d4"
+        />
+      ) : (
+        <SessionsListTable
+          sessions={sessions as any}
+          attendanceCounts={attendanceCounts}
+        />
+      )}
     </div>
   );
 }

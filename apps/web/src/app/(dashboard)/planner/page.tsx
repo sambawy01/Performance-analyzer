@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Planner -- Coach M8" };
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { WeeklyPlanner } from "@/components/planner/weekly-planner";
 

@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Quick Log -- Coach M8" };
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { QuickSessionLogger } from "@/components/sessions/quick-session-logger";

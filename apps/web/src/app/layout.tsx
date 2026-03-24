@@ -15,8 +15,14 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Coach M8",
+  title: {
+    default: "Coach M8",
+    template: "%s",
+  },
   description: "AI-powered football performance analysis",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

@@ -7,6 +7,11 @@ import { AlertPanel } from "@/components/dashboard/alert-panel";
 import { SessionSummaryCard } from "@/components/dashboard/session-summary-card";
 import { DailyBriefing } from "@/components/planner/daily-briefing";
 import { LoadHeatmap } from "@/components/dashboard/load-heatmap";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Sparkles } from "lucide-react";
+
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Dashboard -- Coach M8" };
 
 export default async function DashboardPage() {
   const authClient = await createClient();
@@ -371,6 +376,31 @@ export default async function DashboardPage() {
         players: wm.length,
       });
     }
+  }
+
+  // Check if this is a brand new academy with no data
+  const hasNoData = sessions.length === 0 && (totalPlayers ?? 0) === 0;
+
+  if (hasNoData) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h2 className="text-xl font-bold">Dashboard</h2>
+          <p className="text-sm text-muted-foreground">
+            Welcome, {profile.name}.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl">
+          <EmptyState
+            icon={Sparkles}
+            title="Welcome to Coach M8!"
+            description="Get started by adding players and logging your first session. Your AI-powered coaching dashboard will come alive with data."
+            action={{ label: "Add Players", href: "/players" }}
+            accentColor="#a855f7"
+          />
+        </div>
+      </div>
+    );
   }
 
   return (

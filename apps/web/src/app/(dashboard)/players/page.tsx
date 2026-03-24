@@ -3,6 +3,11 @@ import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { PlayerFilters } from "@/components/players/player-filters";
 import { PlayerCard } from "@/components/players/player-card";
 import { AddPlayerForm } from "@/components/players/add-player-form";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Users } from "lucide-react";
+
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Players -- Coach M8" };
 
 interface PlayersPageProps {
   searchParams: Promise<{
@@ -126,7 +131,15 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
         ))}
       </div>
 
-      {enrichedPlayers.length === 0 && (
+      {enrichedPlayers.length === 0 && !params.age_group && !params.position && !params.status && (
+        <EmptyState
+          icon={Users}
+          title="No players yet"
+          description="Add your first player to get started. Build your squad and track their performance over time."
+          accentColor="#38bdf8"
+        />
+      )}
+      {enrichedPlayers.length === 0 && (params.age_group || params.position || params.status) && (
         <p className="text-center text-white/40 py-12">
           No players found matching the current filters.
         </p>

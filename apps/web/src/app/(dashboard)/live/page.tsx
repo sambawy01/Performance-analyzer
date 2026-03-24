@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Live HR -- Coach M8" };
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { LiveHrDashboard } from "@/components/live/live-hr-dashboard";
 import { LiveSessionSelector } from "@/components/live/live-session-selector";

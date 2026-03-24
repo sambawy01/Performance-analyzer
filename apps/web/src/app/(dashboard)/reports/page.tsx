@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Reports -- Coach M8" };
+
 import Link from "next/link";
 import {
   BarChart3,

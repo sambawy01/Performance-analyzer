@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Tactic Board -- Coach M8" };
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { TacticBoard } from "@/components/tactic-board/tactic-board";
 import type { EnrichedPlayer } from "@/components/tactic-board/tactic-board";

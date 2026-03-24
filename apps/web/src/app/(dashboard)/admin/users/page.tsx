@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Users -- Coach M8" };
+
 export default function UsersPage() {
   return (
     <div>

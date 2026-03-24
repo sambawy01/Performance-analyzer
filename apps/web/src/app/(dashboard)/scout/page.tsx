@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Scout -- Coach M8" };
+
 import { Star, Target } from "lucide-react";
 import { createClient } from "@supabase/supabase-js";
 import { TalentSpotlight } from "@/components/scout/talent-spotlight";

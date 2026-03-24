@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Squad Builder -- Coach M8" };
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { SquadBuilder } from "@/components/squad/squad-builder";
 import type { PitchPlayer } from "@/components/squad/pitch-diagram";

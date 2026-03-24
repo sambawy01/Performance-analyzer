@@ -1,3 +1,6 @@
+import type { Metadata } from "next";
+export const metadata: Metadata = { title: "Injury Prevention -- Coach M8" };
+
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { PreventionDashboard } from "@/components/injury-prevention/prevention-dashboard";
 import type { PlayerRiskData, WeeklyLoadDay } from "@/components/injury-prevention/prevention-dashboard";
