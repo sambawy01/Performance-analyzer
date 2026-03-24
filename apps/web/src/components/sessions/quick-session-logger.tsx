@@ -20,10 +20,9 @@ import {
   Leaf,
   UserCheck,
   UserX,
-  SkipForward,
   Sparkles,
 } from "lucide-react";
-import { calculateTRIMP } from "@/lib/validation";
+// validation utils used server-side in the API route
 
 interface Player {
   id: string;
@@ -87,8 +86,10 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
     new Set()
   );
 
-  // Step 3: Metrics
-  const [metrics, setMetrics] = useState<Record<string, PlayerMetric>>({});
+  // Step 3: Notes
+  const [teamNotes, setTeamNotes] = useState("");
+  const [playerNotes, setPlayerNotes] = useState<Record<string, string>>({});
+  const [autoMetrics, setAutoMetrics] = useState(true);
 
   // Filter players by selected age group
   const filteredPlayers = useMemo(
@@ -103,7 +104,7 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
   const handleAgeGroupChange = (ag: string) => {
     setAgeGroup(ag);
     setSelectedPlayers(new Set());
-    setMetrics({});
+    setPlayerNotes({});
   };
 
   const togglePlayer = (id: string) => {
@@ -126,11 +127,8 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
     setSelectedPlayers(new Set());
   };
 
-  const updateMetric = (playerId: string, hrAvg: number | null) => {
-    setMetrics((prev) => ({
-      ...prev,
-      [playerId]: { hrAvg },
-    }));
+  const updatePlayerNote = (playerId: string, note: string) => {
+    setPlayerNotes((prev) => ({ ...prev, [playerId]: note }));
   };
 
   const canProceedStep1 =
@@ -141,24 +139,15 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
     selectedPlayers.has(p.id)
   );
 
-  async function handleComplete(skipMetrics: boolean = false) {
+  async function handleComplete() {
     setLoading(true);
     setError(null);
 
-    const playerPayload = filteredPlayers.map((p) => {
-      const attended = selectedPlayers.has(p.id);
-      const metric = skipMetrics ? null : metrics[p.id];
-      const hrAvg = metric?.hrAvg;
-      const hrMax = p.hr_max_measured ?? 200;
-
-      return {
-        id: p.id,
-        attended,
-        ...(attended && hrAvg != null
-          ? { hrAvg, hrMax }
-          : {}),
-      };
-    });
+    const playerPayload = filteredPlayers.map((p) => ({
+      id: p.id,
+      attended: selectedPlayers.has(p.id),
+      note: playerNotes[p.id] || undefined,
+    }));
 
     try {
       const res = await fetch("/api/sessions/log", {
@@ -170,6 +159,8 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
           duration,
           location,
           ageGroup,
+          autoGenerateMetrics: autoMetrics,
+          teamNotes,
           players: playerPayload,
         }),
       });
@@ -195,7 +186,7 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
   const steps = [
     { num: 1, label: "Info", icon: Calendar },
     { num: 2, label: "Attendance", icon: Users },
-    { num: 3, label: "Metrics", icon: Heart },
+    { num: 3, label: "Notes", icon: Heart },
     { num: 4, label: "Done", icon: Check },
   ];
 
@@ -541,108 +532,74 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
         </div>
       )}
 
-      {/* Step 3: Quick Metrics */}
+      {/* Step 3: Coach Notes + Auto Metrics */}
       {step === 3 && (
         <div className="space-y-4 animate-in fade-in duration-300">
-          <div className="rounded-xl bg-white/[0.04] border border-white/[0.08] p-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Heart className="h-4 w-4 text-[#ff3355]" />
-              <span className="text-sm font-semibold text-white">
-                HR Avg (optional)
-              </span>
+          {/* Auto-generate metrics toggle */}
+          <div className="rounded-xl bg-[#a855f7]/10 border border-[#a855f7]/20 p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-[#a855f7]" />
+                <span className="text-sm font-semibold text-white">Auto-Generate Metrics</span>
+              </div>
+              <button
+                onClick={() => setAutoMetrics(!autoMetrics)}
+                className={`w-12 h-7 rounded-full transition-all duration-200 ${
+                  autoMetrics ? "bg-[#a855f7]" : "bg-white/10"
+                }`}
+              >
+                <div
+                  className={`h-5 w-5 rounded-full bg-white shadow transition-transform duration-200 ${
+                    autoMetrics ? "translate-x-6" : "translate-x-1"
+                  }`}
+                />
+              </button>
             </div>
-            <p className="text-xs text-white/40">
-              Drag the slider for each player or skip entirely. TRIMP is
-              auto-calculated.
+            <p className="text-xs text-white/40 mt-1.5">
+              {autoMetrics
+                ? "AI will generate realistic HR, TRIMP, speed, and distance data based on session type and duration. Perfect for demo or when wearables aren't available."
+                : "No metrics will be generated. You can add them manually later from the session detail page."}
             </p>
           </div>
 
-          {/* Skip button */}
-          <button
-            onClick={() => handleComplete(true)}
-            disabled={loading}
-            className="w-full h-12 rounded-xl bg-white/[0.06] border border-white/[0.08] text-white/50 font-semibold text-sm transition-all hover:bg-white/[0.1] active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            <SkipForward className="h-4 w-4" />
-            Skip Metrics &mdash; Complete Without HR Data
-          </button>
+          {/* Team Notes */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-white/50">
+              Team Notes
+            </label>
+            <textarea
+              value={teamNotes}
+              onChange={(e) => setTeamNotes(e.target.value)}
+              placeholder="Overall session observations, tactical notes, team performance..."
+              rows={3}
+              className="w-full rounded-xl bg-white/[0.06] border border-white/[0.1] px-4 py-3 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#00d4ff]/50 resize-none"
+            />
+          </div>
 
-          {/* Player metrics */}
-          <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-1">
-            {attendingPlayers.map((player) => {
-              const hrAvg = metrics[player.id]?.hrAvg ?? null;
-              const hrMax = player.hr_max_measured ?? 200;
-              const trimp =
-                hrAvg != null
-                  ? calculateTRIMP(duration, hrAvg, hrMax)
-                  : null;
-
-              return (
-                <div
-                  key={player.id}
-                  className="rounded-xl bg-white/[0.04] border border-white/[0.06] p-3 space-y-2"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-[#00d4ff] w-6 text-center">
-                        {player.jersey_number}
-                      </span>
-                      <span className="text-sm font-medium text-white">
-                        {player.name}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {hrAvg != null && (
-                        <span className="font-mono text-sm font-bold text-[#ff3355]">
-                          {hrAvg} bpm
-                        </span>
-                      )}
-                      {trimp != null && (
-                        <span
-                          className={`font-mono text-xs px-2 py-0.5 rounded-md ${
-                            trimp > 200
-                              ? "bg-[#ff3355]/10 text-[#ff3355]"
-                              : trimp > 100
-                                ? "bg-[#ff6b35]/10 text-[#ff6b35]"
-                                : "bg-[#00ff88]/10 text-[#00ff88]"
-                          }`}
-                        >
-                          TRIMP {trimp}
-                        </span>
-                      )}
-                    </div>
+          {/* Player Notes */}
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-wider text-white/50">
+              Player Notes (optional)
+            </label>
+            <div className="space-y-2 max-h-[35vh] overflow-y-auto pr-1">
+              {attendingPlayers.map((player) => (
+                <div key={player.id} className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="font-mono text-xs text-[#00d4ff] w-6 text-center">
+                      {player.jersey_number}
+                    </span>
+                    <span className="text-sm font-medium text-white/70">{player.name}</span>
                   </div>
-                  {/* Slider */}
-                  <div className="relative">
-                    <input
-                      type="range"
-                      min={120}
-                      max={200}
-                      step={1}
-                      value={hrAvg ?? 120}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value);
-                        updateMetric(player.id, val);
-                      }}
-                      className="w-full h-10 appearance-none bg-transparent cursor-pointer touch-pan-y [&::-webkit-slider-runnable-track]:h-2 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-gradient-to-r [&::-webkit-slider-runnable-track]:from-[#00d4ff] [&::-webkit-slider-runnable-track]:via-[#ff6b35] [&::-webkit-slider-runnable-track]:to-[#ff3355] [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-7 [&::-webkit-slider-thumb]:h-7 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_10px_rgba(0,0,0,0.5)] [&::-webkit-slider-thumb]:-mt-2.5 [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white/50"
-                    />
-                    <div className="flex justify-between text-[10px] text-white/30 font-mono mt-0.5">
-                      <span>120</span>
-                      <span>160</span>
-                      <span>200</span>
-                    </div>
-                  </div>
-                  {hrAvg == null && (
-                    <button
-                      onClick={() => updateMetric(player.id, 155)}
-                      className="text-xs text-white/30 hover:text-white/50 transition-colors"
-                    >
-                      Tap to enable slider
-                    </button>
-                  )}
+                  <input
+                    type="text"
+                    value={playerNotes[player.id] || ""}
+                    onChange={(e) => updatePlayerNote(player.id, e.target.value)}
+                    placeholder="e.g. Great pressing, needs work on first touch..."
+                    className="w-full h-10 rounded-lg bg-white/[0.04] border border-white/[0.06] px-3 text-xs text-white/60 placeholder:text-white/20 focus:outline-none focus:border-[#00d4ff]/30"
+                  />
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
 
           {error && (
@@ -661,7 +618,7 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
               Back
             </button>
             <button
-              onClick={() => handleComplete(false)}
+              onClick={() => handleComplete()}
               disabled={loading}
               className="flex-1 h-14 rounded-xl font-bold text-base transition-all duration-200 flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
               style={{
@@ -751,18 +708,22 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
                 {selectedPlayers.size} / {filteredPlayers.length} players
               </span>
             </div>
-            {Object.values(metrics).some((m) => m.hrAvg != null) && (
+            {autoMetrics && (
               <div className="flex items-center justify-between">
                 <span className="text-xs uppercase tracking-wider text-white/30">
-                  Metrics recorded
+                  Metrics
                 </span>
-                <span className="font-mono text-sm font-bold text-[#00d4ff]">
-                  {
-                    Object.values(metrics).filter((m) => m.hrAvg != null)
-                      .length
-                  }{" "}
-                  players
+                <span className="font-mono text-sm font-bold text-[#a855f7]">
+                  Auto-generated
                 </span>
+              </div>
+            )}
+            {teamNotes && (
+              <div className="flex items-center justify-between">
+                <span className="text-xs uppercase tracking-wider text-white/30">
+                  Coach Notes
+                </span>
+                <span className="text-sm text-[#00d4ff]">Included</span>
               </div>
             )}
           </div>
@@ -791,7 +752,7 @@ export function QuickSessionLogger({ players }: { players: Player[] }) {
                 setDuration(0);
                 setLocation("");
                 setSelectedPlayers(new Set());
-                setMetrics({});
+                setPlayerNotes({});
                 setCreatedSessionId(null);
               }}
               className="w-full h-12 rounded-xl bg-white/[0.06] border border-white/[0.08] text-white/50 font-semibold text-sm transition-all hover:bg-white/[0.1] active:scale-[0.98] flex items-center justify-center gap-2"
