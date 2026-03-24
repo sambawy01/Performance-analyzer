@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -13,49 +12,65 @@ export async function POST(request: NextRequest) {
   try {
     const { playerId } = await request.json();
 
-    if (!playerId) {
-      return NextResponse.json({ error: "playerId required" }, { status: 400 });
+    if (!playerId || typeof playerId !== "string") {
+      return NextResponse.json({ error: "playerId is required" }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(c) { try { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {} },
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    // Auth check
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Fetch player
+    // Get user profile with academy_id
+    const supabase = createAdminClient();
+    const { data: profile } = await supabase
+      .from("users")
+      .select("academy_id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    // Fetch player — filtered by academy_id
     const { data: player } = await supabase
       .from("players")
       .select("*")
       .eq("id", playerId)
+      .eq("academy_id", profile.academy_id)
       .single();
 
     if (!player) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
-    const age = Math.floor(
-      (Date.now() - new Date(player.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000)
-    );
+    const age = player.dob
+      ? Math.floor((Date.now() - new Date(player.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+      : null;
 
-    // Fetch session metrics
+    // Fetch wearable metrics (NO FK JOINS)
     const { data: metrics } = await supabase
       .from("wearable_metrics")
-      .select("*, sessions!inner(date, type)")
+      .select("session_id, hr_avg, hr_max, trimp_score, hr_recovery_60s, created_at")
       .eq("player_id", playerId)
       .order("created_at", { ascending: false })
       .limit(20);
+
+    // Fetch session details separately
+    const sessionIds = [...new Set((metrics ?? []).map((m) => m.session_id))];
+    const { data: sessions } = sessionIds.length > 0
+      ? await supabase.from("sessions").select("id, date, type").in("id", sessionIds).eq("academy_id", profile.academy_id)
+      : { data: [] };
+    const sessionMap = new Map((sessions ?? []).map((s) => [s.id, s]));
+
+    // Enrich metrics with session data
+    const enrichedMetrics = (metrics ?? []).map((m: any) => ({
+      ...m,
+      session: sessionMap.get(m.session_id) ?? null,
+    }));
 
     // Fetch load history
     const { data: loadHistory } = await supabase
@@ -74,22 +89,22 @@ export async function POST(request: NextRequest) {
       .limit(3);
 
     // Calculate stats
-    const sessionCount = metrics?.length ?? 0;
+    const sessionCount = enrichedMetrics.length;
     const latestLoad = loadHistory?.[0] ?? null;
 
     // Calculate attendance rate (sessions attended vs expected ~2/week for 28 days = 8)
     const twentyEightDaysAgo = new Date();
     twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
-    const recentSessions = (metrics ?? []).filter(
-      (m: any) => new Date(m.sessions?.date) >= twentyEightDaysAgo
+    const recentSessions = enrichedMetrics.filter(
+      (m: any) => m.session?.date && new Date(m.session.date) >= twentyEightDaysAgo
     );
     const attendanceRate = Math.min(100, Math.round((recentSessions.length / 8) * 100));
 
     // Calculate HR improvement (compare first 5 vs last 5 sessions)
     let fitnessImprovement = 0;
-    if ((metrics ?? []).length >= 6) {
-      const old5 = (metrics ?? []).slice(-5);
-      const new5 = (metrics ?? []).slice(0, 5);
+    if (enrichedMetrics.length >= 6) {
+      const old5 = enrichedMetrics.slice(-5);
+      const new5 = enrichedMetrics.slice(0, 5);
       const oldAvgHr = old5.reduce((s: number, m: any) => s + m.hr_avg, 0) / old5.length;
       const newAvgHr = new5.reduce((s: number, m: any) => s + m.hr_avg, 0) / new5.length;
       // Lower average HR = better fitness
@@ -97,9 +112,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Build data summary for Claude
-    const recentSessionsSummary = (metrics ?? []).slice(0, 10).map((m: any) => ({
-      date: m.sessions?.date,
-      type: m.sessions?.type,
+    const recentSessionsSummary = enrichedMetrics.slice(0, 10).map((m: any) => ({
+      date: m.session?.date,
+      type: m.session?.type,
       hr_avg: m.hr_avg,
       trimp: Math.round(m.trimp_score),
       recovery: m.hr_recovery_60s,
@@ -109,7 +124,7 @@ export async function POST(request: NextRequest) {
 
 PLAYER DETAILS:
 - Name: ${player.name}
-- Age: ${age} years old
+- Age: ${age ?? "Unknown"} years old
 - Position: ${player.position}
 - Age Group: U${2026 - parseInt(player.age_group)}
 - Jersey Number: #${player.jersey_number}
@@ -129,7 +144,7 @@ INJURY RISK STATUS:
 FITNESS TREND:
 - Average HR trend: ${fitnessImprovement > 0 ? `Improved by ${fitnessImprovement}% (heart working more efficiently)` : fitnessImprovement < 0 ? `Slight increase (normal during heavy training phases)` : 'Stable'}
 
-${snapshots && snapshots.length > 0 ? `DEVELOPMENT NOTES FROM PREVIOUS REPORTS:\n${snapshots.map(s => `- ${s.month}: ${s.ai_development_narrative ?? 'No notes'}`).join('\n')}` : ''}
+${snapshots && snapshots.length > 0 ? `DEVELOPMENT NOTES FROM PREVIOUS REPORTS:\n${snapshots.map((s: any) => `- ${s.month}: ${s.ai_development_narrative ?? 'No notes'}`).join('\n')}` : ''}
 
 Write a warm, encouraging monthly parent report with these sections (use ## headers):
 

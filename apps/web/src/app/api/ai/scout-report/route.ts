@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildFullContext } from "@/lib/ai/build-context";
 
@@ -170,28 +169,20 @@ export async function POST(request: NextRequest) {
   try {
     const { opponent, matchDate } = await request.json();
 
-    if (!opponent || !matchDate) {
-      return NextResponse.json(
-        { error: "opponent and matchDate required" },
-        { status: 400 }
-      );
+    if (!opponent || typeof opponent !== "string" || opponent.trim().length === 0) {
+      return NextResponse.json({ error: "opponent is required" }, { status: 400 });
+    }
+    if (!matchDate || typeof matchDate !== "string") {
+      return NextResponse.json({ error: "matchDate is required" }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(c) { try { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {} },
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    // Auth check
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    // Get user profile with academy_id
+    const supabase = createAdminClient();
     const { data: profile } = await supabase
       .from("users")
       .select("academy_id")
@@ -202,12 +193,12 @@ export async function POST(request: NextRequest) {
 
     // Phase 1 + Squad context in parallel
     const [research, squadContext] = await Promise.all([
-      deepResearchOpponent(opponent),
+      deepResearchOpponent(opponent.trim()),
       buildFullContext(profile.academy_id),
     ]);
 
     // Phase 2: Generate dossier
-    const report = await generateScoutReport(opponent, matchDate, research, squadContext);
+    const report = await generateScoutReport(opponent.trim(), matchDate, research, squadContext);
 
     return NextResponse.json({ report });
   } catch (error) {

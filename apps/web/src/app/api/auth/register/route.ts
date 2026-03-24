@@ -1,28 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
     const { name, email, password, inviteCode } = await request.json();
 
-    if (!name || !email || !password || !inviteCode) {
-      return NextResponse.json(
-        { error: "All fields are required" },
-        { status: 400 }
-      );
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
-
+    if (!email || typeof email !== "string" || !email.includes("@")) {
+      return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
+    }
+    if (!password || typeof password !== "string") {
+      return NextResponse.json({ error: "Password is required" }, { status: 400 });
+    }
     if (password.length < 6) {
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },
         { status: 400 }
       );
     }
+    if (!inviteCode || typeof inviteCode !== "string" || !inviteCode.trim()) {
+      return NextResponse.json({ error: "Invite code is required" }, { status: 400 });
+    }
 
-    const supabase = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const supabase = createAdminClient();
 
     // 1. Validate invite code
     const { data: invite, error: inviteError } = await supabase
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest) {
     const { error: profileError } = await supabase.from("users").insert({
       auth_user_id: authData.user.id,
       academy_id: invite.academy_id,
-      name,
+      name: name.trim(),
       email,
       role: invite.role,
       age_groups_visible: ["2010", "2012", "2013"],

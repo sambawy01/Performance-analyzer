@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildFullContext } from "@/lib/ai/build-context";
 
@@ -21,27 +20,28 @@ export async function POST(request: NextRequest) {
   try {
     const { type, playerCount, duration, focus, notes } = await request.json();
 
-    if (!type || !playerCount || !duration || !focus) {
-      return NextResponse.json({ error: "type, playerCount, duration, and focus are required" }, { status: 400 });
+    if (!type || typeof type !== "string") {
+      return NextResponse.json({ error: "type is required" }, { status: 400 });
+    }
+    if (!playerCount || typeof playerCount !== "number" || playerCount < 1) {
+      return NextResponse.json({ error: "playerCount is required and must be a positive number" }, { status: 400 });
+    }
+    if (!duration || typeof duration !== "number" || duration < 1) {
+      return NextResponse.json({ error: "duration is required and must be a positive number" }, { status: 400 });
+    }
+    if (!focus || typeof focus !== "string") {
+      return NextResponse.json({ error: "focus is required" }, { status: 400 });
     }
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(c) { try { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {} },
-        },
-      }
-    );
-
-    const { data: { user } } = await supabase.auth.getUser();
+    // Auth check
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get user profile with academy_id
+    const supabase = createAdminClient();
     const { data: profile } = await supabase
       .from("users")
       .select("academy_id")
@@ -66,10 +66,10 @@ Using the team data above (especially current ACWR load status and injury risk f
 - Expected intensity: which HR zones to target
 - Key objective in one sentence
 
-## Warm-Up (${Math.round(parseInt(duration) * 0.2)} minutes)
+## Warm-Up (${Math.round(duration * 0.2)} minutes)
 Describe 2 warm-up activities. For each: drill name, setup (space dimensions, number of players), rules, duration. Start with dynamic movement, progress to football-specific activation.
 
-## Main Phase (${Math.round(parseInt(duration) * 0.6)} minutes)
+## Main Phase (${Math.round(duration * 0.6)} minutes)
 Describe 2-3 main drills focused on ${focus}. For each drill:
 - **Drill Name**
 - Setup: dimensions (e.g. 30x20m), player numbers, equipment
@@ -78,7 +78,7 @@ Describe 2-3 main drills focused on ${focus}. For each drill:
 - Coaching points: 2-3 key technical/tactical cues
 - Expected intensity zone
 
-## Cool-Down (${Math.round(parseInt(duration) * 0.2)} minutes)
+## Cool-Down (${Math.round(duration * 0.2)} minutes)
 Appropriate recovery activities. Include technical work at low intensity.
 
 ## Player Modifications

@@ -8,6 +8,10 @@ export async function POST(
   try {
     const { id: sessionId } = await params;
 
+    if (!sessionId || typeof sessionId !== "string") {
+      return NextResponse.json({ error: "Session ID is required" }, { status: 400 });
+    }
+
     const authClient = await createClient();
     const {
       data: { user },
@@ -19,11 +23,23 @@ export async function POST(
 
     const admin = createAdminClient();
 
-    // Verify session exists
+    // Get user profile with academy_id
+    const { data: profile } = await admin
+      .from("users")
+      .select("academy_id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    // Verify session exists and belongs to user's academy
     const { data: session } = await admin
       .from("sessions")
       .select("id, academy_id")
       .eq("id", sessionId)
+      .eq("academy_id", profile.academy_id)
       .single();
 
     if (!session) {

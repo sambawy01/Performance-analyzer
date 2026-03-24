@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -9,38 +8,36 @@ export async function POST(request: NextRequest) {
   try {
     const { formation, players, opponentFormation } = await request.json();
 
-    if (!formation || !players || !Array.isArray(players)) {
+    if (!formation || typeof formation !== "string") {
       return NextResponse.json(
-        { error: "formation and players[] are required" },
+        { error: "formation is required" },
+        { status: 400 }
+      );
+    }
+    if (!players || !Array.isArray(players)) {
+      return NextResponse.json(
+        { error: "players array is required" },
         { status: 400 }
       );
     }
 
     // Auth check
-    const cookieStore = await cookies();
-    const authSupabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(c) {
-            try {
-              c.forEach(({ name, value, options }) =>
-                cookieStore.set(name, value, options)
-              );
-            } catch {}
-          },
-        },
-      }
-    );
-    const {
-      data: { user },
-    } = await authSupabase.auth.getUser();
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user profile with academy_id
+    const supabase = createAdminClient();
+    const { data: profile } = await supabase
+      .from("users")
+      .select("academy_id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
     // Build player data for the prompt

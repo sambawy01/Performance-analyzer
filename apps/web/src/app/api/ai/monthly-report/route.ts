@@ -1,26 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-function adminClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-}
-
 export async function POST(request: NextRequest) {
   try {
-    const { academyId, month, year } = await request.json();
+    const { month, year } = await request.json();
 
-    if (!academyId) {
-      return NextResponse.json({ error: "academyId required" }, { status: 400 });
+    // Auth check
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const supabase = adminClient();
+    // Get user profile with academy_id (ignore client-sent academyId)
+    const supabase = createAdminClient();
+    const { data: profile } = await supabase
+      .from("users")
+      .select("academy_id")
+      .eq("auth_user_id", user.id)
+      .single();
 
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    const academyId = profile.academy_id;
     const targetMonth = month ?? new Date().getMonth() + 1;
     const targetYear = year ?? new Date().getFullYear();
     const monthStart = `${targetYear}-${String(targetMonth).padStart(2, "0")}-01`;

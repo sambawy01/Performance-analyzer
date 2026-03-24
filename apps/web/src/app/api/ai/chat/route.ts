@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerClient } from "@supabase/ssr";
-import { cookies } from "next/headers";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { buildFullContext } from "@/lib/ai/build-context";
 
@@ -10,24 +9,19 @@ export async function POST(request: NextRequest) {
   try {
     const { messages, context: pageContext } = await request.json();
 
-    const cookieStore = await cookies();
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() { return cookieStore.getAll(); },
-          setAll(c) { try { c.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); } catch {} },
-        },
-      }
-    );
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return NextResponse.json({ error: "messages array is required" }, { status: 400 });
+    }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    // Auth check
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user profile for academy_id
+    // Get user profile with academy_id
+    const supabase = createAdminClient();
     const { data: profile } = await supabase
       .from("users")
       .select("academy_id, name, role")

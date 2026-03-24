@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -7,30 +7,49 @@ const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 export async function POST(request: NextRequest) {
   try {
     const { sessionId } = await request.json();
-    if (!sessionId) {
-      return NextResponse.json({ error: "sessionId required" }, { status: 400 });
+    if (!sessionId || typeof sessionId !== "string") {
+      return NextResponse.json({ error: "sessionId is required" }, { status: 400 });
     }
 
-    // Use admin client — bypasses RLS, no FK join issues
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    // Auth check
+    const authClient = await createClient();
+    const { data: { user } } = await authClient.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get user profile with academy_id
+    const supabase = createAdminClient();
+    const { data: profile } = await supabase
+      .from("users")
+      .select("academy_id")
+      .eq("auth_user_id", user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
+    }
+
+    // Fetch session — filtered by academy_id
+    const { data: session } = await supabase
+      .from("sessions")
+      .select("*")
+      .eq("id", sessionId)
+      .eq("academy_id", profile.academy_id)
+      .single();
+
+    if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
     // Fetch all data
-    const [sessionRes, metricsRes, tacticalRes, loadRes] = await Promise.all([
-      supabase.from("sessions").select("*").eq("id", sessionId).single(),
+    const [metricsRes, tacticalRes, loadRes] = await Promise.all([
       supabase.from("wearable_metrics").select("*").eq("session_id", sessionId),
       supabase.from("tactical_metrics").select("*").eq("session_id", sessionId).maybeSingle(),
       supabase.from("load_records").select("*").eq("session_id", sessionId),
     ]);
 
-    const session = sessionRes.data;
     const metrics = metricsRes.data ?? [];
     const tactical = tacticalRes.data;
     const loadRecords = loadRes.data ?? [];
-
-    if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
     // Fetch players separately (NO FK JOINS)
     const allPlayerIds = [...new Set([
@@ -38,7 +57,7 @@ export async function POST(request: NextRequest) {
       ...loadRecords.map((l: any) => l.player_id),
     ])];
     const { data: players } = allPlayerIds.length > 0
-      ? await supabase.from("players").select("id, name, jersey_number, position, age_group").in("id", allPlayerIds)
+      ? await supabase.from("players").select("id, name, jersey_number, position, age_group").in("id", allPlayerIds).eq("academy_id", profile.academy_id)
       : { data: [] };
     const playerMap = new Map((players ?? []).map((p: any) => [p.id, p]));
 
