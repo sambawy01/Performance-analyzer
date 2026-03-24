@@ -120,8 +120,11 @@ export default async function PlayerProfilePage({
 
   const twentyEightDaysAgo = new Date();
   twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
-  const recentSessionCount = sessionMetrics.filter(
-    (m: any) => new Date(m.sessions?.date) >= twentyEightDaysAgo
+  const recentSessionCount = (sessionMetrics || []).filter(
+    (m: any) => {
+      const date = m.session?.date || m.sessions?.date || m.date;
+      return date ? new Date(date) >= twentyEightDaysAgo : false;
+    }
   ).length;
 
   const latestLoad = loadHistory.length > 0 ? loadHistory[0] : null;
