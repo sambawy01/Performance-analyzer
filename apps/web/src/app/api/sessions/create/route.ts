@@ -46,19 +46,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const insertData: Record<string, any> = {
+      academy_id: profile.academy_id,
+      date,
+      type,
+      duration_minutes: duration_minutes || 90,
+      location: location || "HQ",
+      age_group: age_group || "2010",
+      notes: notes || null,
+    };
+
     const { data: session, error } = await admin
       .from("sessions")
-      .insert({
-        academy_id: profile.academy_id,
-        coach_id: profile.id,
-        date,
-        type,
-        duration_minutes: duration_minutes || 90,
-        location: location || "HQ",
-        age_group: age_group || "2013",
-        notes: notes || null,
-        status: "planned",
-      })
+      .insert(insertData)
       .select()
       .single();
 

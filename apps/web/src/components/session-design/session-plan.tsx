@@ -120,9 +120,14 @@ export function SessionPlan() {
           notes: `${sessionTime} | ${focus} focus | U${new Date().getFullYear() - parseInt(ageGroup)} (${ageGroup})\n\nAI Designed:\n${planText.substring(0, 800)}`,
         }),
       });
-      if (res.ok) setAddedToCalendar(true);
-    } catch {
-      // silent
+      if (res.ok) {
+        setAddedToCalendar(true);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        console.error("Save to schedule failed:", data.error || res.status);
+      }
+    } catch (err) {
+      console.error("Save to schedule error:", err);
     } finally {
       setAddingToCalendar(false);
     }
