@@ -253,30 +253,99 @@ export function DailyBriefing({
             )}
           </div>
 
-          {/* AI Insights */}
+          {/* AI Insights — contextual coaching intelligence */}
           <div className="rounded-lg bg-[#a855f7]/5 border border-[#a855f7]/10 p-3">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 mb-2.5">
               <Sparkles className="h-4 w-4 text-[#a855f7]" />
               <span className="text-xs font-semibold text-[#a855f7]/70 uppercase tracking-wider">AI Insights</span>
             </div>
-            <div className="space-y-2 text-sm text-white/70">
+            <div className="space-y-2.5">
+              {/* Priority 1: Injury risk */}
               {redPlayers.length > 0 && (
-                <p><span className="text-[#ff3355] font-semibold">{redPlayers.length} danger zone</span> — rest {redPlayers.map(p => `#${p.jerseyNumber}`).join(", ")} today.</p>
+                <div className="flex items-start gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#ff3355] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #ff3355" }} />
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    <span className="text-[#ff3355] font-semibold">High injury risk:</span> {redPlayers.slice(0, 3).map(p => `${p.name} (ACWR ${p.acwr.toFixed(2)})`).join(", ")}
+                    {redPlayers.length > 3 && ` +${redPlayers.length - 3} more`}. Recommend full rest or light recovery only.
+                  </p>
+                </div>
               )}
+
+              {/* Priority 2: Load management */}
               {amberPlayers.length > 0 && (
-                <p><span className="text-[#ff6b35] font-semibold">{amberPlayers.length} caution</span> — monitor {amberPlayers.map(p => `#${p.jerseyNumber}`).join(", ")}.</p>
+                <div className="flex items-start gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#ff6b35] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #ff6b35" }} />
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    <span className="text-[#ff6b35] font-semibold">{amberPlayers.length} players need load monitoring.</span>
+                    {" "}Reduce volume for {amberPlayers.slice(0, 2).map(p => p.name).join(" & ")}
+                    {amberPlayers.length > 2 && ` and ${amberPlayers.length - 2} others`}.
+                    {todaySession ? " Cap their session at 60 minutes." : ""}
+                  </p>
+                </div>
               )}
-              {loadTrend !== null && loadTrend > 15 && (
-                <p><span className="text-[#ff6b35] font-semibold">Load spike</span> — weekly load up {loadTrend}%. Consider reducing intensity.</p>
+
+              {/* Priority 3: Match prep context */}
+              {daysUntilMatch !== null && daysUntilMatch <= 3 && daysUntilMatch > 0 && (
+                <div className="flex items-start gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#a855f7] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #a855f7" }} />
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    <span className="text-[#a855f7] font-semibold">Match in {daysUntilMatch}d.</span>
+                    {daysUntilMatch === 1
+                      ? " Today should be activation only — 30min walk-through, set pieces, team shape. No high intensity."
+                      : daysUntilMatch === 2
+                        ? " Keep today moderate. Focus on tactical patterns and transition drills. Avoid heavy conditioning."
+                        : " Good window for a sharp, match-intensity session. Test your starting XI shape."}
+                  </p>
+                </div>
               )}
-              {loadTrend !== null && loadTrend < -15 && (
-                <p><span className="text-[#00d4ff] font-semibold">Load drop</span> — weekly load down {Math.abs(loadTrend)}%. Good for recovery week.</p>
+
+              {/* Priority 4: Load trend analysis */}
+              {loadTrend !== null && Math.abs(loadTrend) > 10 && (
+                <div className="flex items-start gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: loadTrend > 10 ? "#ff6b35" : "#00d4ff", boxShadow: `0 0 4px ${loadTrend > 10 ? "#ff6b35" : "#00d4ff"}` }} />
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    {loadTrend > 10 ? (
+                      <><span className="text-[#ff6b35] font-semibold">Load trending up {loadTrend}%.</span> Squad is accumulating fatigue. If no match this week, schedule a recovery session. If match approaching, taper now.</>
+                    ) : (
+                      <><span className="text-[#00d4ff] font-semibold">Load down {Math.abs(loadTrend)}%.</span> Good deload phase. Squad should feel fresh. Ideal time to push tactical complexity or high-intensity reps.</>
+                    )}
+                  </p>
+                </div>
               )}
-              {daysUntilMatch !== null && daysUntilMatch <= 2 && daysUntilMatch > 0 && (
-                <p><span className="text-[#a855f7] font-semibold">Match in {daysUntilMatch} day{daysUntilMatch > 1 ? "s" : ""}</span> — keep today&apos;s session light. Focus on set pieces and walk-throughs.</p>
+
+              {/* Priority 5: Session recommendation */}
+              {todaySession && (
+                <div className="flex items-start gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#00d4ff] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #00d4ff" }} />
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    <span className="text-[#00d4ff] font-semibold">Today&apos;s {todaySession.type}:</span>
+                    {teamReadiness !== null && teamReadiness < 50
+                      ? " Squad readiness is low — consider reducing planned intensity by 20-30% and shortening to 60 min."
+                      : teamReadiness !== null && teamReadiness >= 80
+                        ? " Squad is fresh and ready. Push the intensity — this is a good day for high-tempo tactical work."
+                        : ` ${todaySession.duration_minutes} min at ${todaySession.location}. Monitor HR zones closely for flagged players.`}
+                  </p>
+                </div>
               )}
-              {playersAtRisk.length === 0 && (!loadTrend || Math.abs(loadTrend) <= 15) && (
-                <p><span className="text-[#00ff88] font-semibold">Looking good</span> — squad is healthy, load is balanced. {todaySession ? `Push the intensity in today's ${todaySession.type} session.` : "Use this rest day to prepare for upcoming sessions."}</p>
+
+              {/* All clear */}
+              {playersAtRisk.length === 0 && (!loadTrend || Math.abs(loadTrend) <= 10) && !todaySession && (
+                <div className="flex items-start gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#00ff88] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #00ff88" }} />
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    <span className="text-[#00ff88] font-semibold">All clear.</span> No load alerts, squad is healthy. Rest day — let the body recover. Good time for video review or individual skill sessions.
+                  </p>
+                </div>
+              )}
+
+              {/* Top performer shoutout */}
+              {topPerformer && (
+                <div className="flex items-start gap-2">
+                  <div className="h-1.5 w-1.5 rounded-full bg-[#ffbb00] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #ffbb00" }} />
+                  <p className="text-xs text-white/60 leading-relaxed">
+                    <span className="text-[#ffbb00] font-semibold">Star performer:</span> #{topPerformer.jersey} {topPerformer.name} leads with TRIMP {topPerformer.trimp} this week. Consider featuring in social media content.
+                  </p>
+                </div>
               )}
             </div>
           </div>

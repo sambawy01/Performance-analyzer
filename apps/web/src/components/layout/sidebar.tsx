@@ -25,40 +25,45 @@ import {
 const navGroups = [
   {
     label: "Overview",
+    color: "#00d4ff",
     items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/sessions", label: "Sessions", icon: CalendarDays },
-      { href: "/players", label: "Players", icon: Users },
+      { href: "/", label: "Dashboard", icon: LayoutDashboard, color: "#00d4ff" },
+      { href: "/sessions", label: "Sessions", icon: CalendarDays, color: "#06b6d4" },
+      { href: "/players", label: "Players", icon: Users, color: "#38bdf8" },
     ],
   },
   {
     label: "Coaching",
+    color: "#00ff88",
     items: [
-      { href: "/planner", label: "Planner", icon: CalendarClock },
-      { href: "/match-readiness", label: "Match Readiness", icon: HeartPulse },
-      { href: "/squad-builder", label: "Squad Builder", icon: ShieldHalf },
-      { href: "/session-design", label: "Session Design", icon: ClipboardList },
+      { href: "/planner", label: "Planner", icon: CalendarClock, color: "#00ff88" },
+      { href: "/match-readiness", label: "Match Readiness", icon: HeartPulse, color: "#34d399" },
+      { href: "/squad-builder", label: "Squad Builder", icon: ShieldHalf, color: "#4ade80" },
+      { href: "/session-design", label: "Session Design", icon: ClipboardList, color: "#22d3ee" },
     ],
   },
   {
     label: "Intelligence",
+    color: "#a855f7",
     items: [
-      { href: "/scout", label: "Scout", icon: Target },
-      { href: "/compare", label: "Compare", icon: GitCompare },
-      { href: "/debrief", label: "Debrief", icon: FileBarChart },
-      { href: "/reports", label: "Reports", icon: FileText },
+      { href: "/scout", label: "Scout", icon: Target, color: "#a855f7" },
+      { href: "/compare", label: "Compare", icon: GitCompare, color: "#c084fc" },
+      { href: "/debrief", label: "Debrief", icon: FileBarChart, color: "#818cf8" },
+      { href: "/reports", label: "Reports", icon: FileText, color: "#a78bfa" },
     ],
   },
   {
     label: "Live",
+    color: "#ff3355",
     items: [
-      { href: "/live", label: "Live HR", icon: Radio, isLive: true },
+      { href: "/live", label: "Live HR", icon: Radio, isLive: true, color: "#ff3355" },
     ],
   },
   {
     label: "Admin",
+    color: "#ff6b35",
     items: [
-      { href: "/admin/users", label: "Users", icon: Settings, adminOnly: true },
+      { href: "/admin/users", label: "Users", icon: Settings, adminOnly: true, color: "#ff6b35" },
     ],
   },
 ];
@@ -69,15 +74,31 @@ function NavContent({ role, onNavigate }: { role: string; onNavigate?: () => voi
   return (
     <>
       {/* Logo */}
-      <div className="mb-7 px-1">
-        <h1 className="text-lg font-bold text-gradient tracking-tight">Coach M8</h1>
-        <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] mt-1 font-medium">
-          AI Performance Analysis &amp; Squad Management
-        </p>
+      <div className="mb-6 px-2">
+        <div className="flex items-center gap-2.5">
+          <div
+            className="h-9 w-9 rounded-xl flex items-center justify-center shrink-0"
+            style={{
+              background: "linear-gradient(135deg, #00d4ff, #a855f7)",
+              boxShadow: "0 0 20px rgba(0,212,255,0.25), 0 0 40px rgba(168,85,247,0.1)",
+            }}
+          >
+            <span className="text-white font-bold text-sm">M8</span>
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-white tracking-tight leading-none">Coach M8</h1>
+            <p className="text-[8px] text-white/25 uppercase tracking-[0.18em] mt-0.5 font-medium">
+              AI Performance &amp; Squad
+            </p>
+          </div>
+        </div>
       </div>
 
+      {/* Divider */}
+      <div className="mx-3 mb-4 h-px bg-gradient-to-r from-transparent via-white/[0.08] to-transparent" />
+
       {/* Nav groups */}
-      <nav className="space-y-5">
+      <nav className="space-y-4 flex-1">
         {navGroups.map((group) => {
           const items = group.items.filter(
             (item) => !("adminOnly" in item && item.adminOnly) || role === "director"
@@ -86,10 +107,13 @@ function NavContent({ role, onNavigate }: { role: string; onNavigate?: () => voi
 
           return (
             <div key={group.label}>
-              <p className="text-[9px] font-semibold uppercase tracking-[0.15em] text-white/20 px-3 mb-1.5">
+              <p
+                className="text-[9px] font-bold uppercase tracking-[0.18em] px-3 mb-2"
+                style={{ color: `${group.color}40` }}
+              >
                 {group.label}
               </p>
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {items.map((item) => {
                   const isActive =
                     pathname === item.href ||
@@ -100,40 +124,39 @@ function NavContent({ role, onNavigate }: { role: string; onNavigate?: () => voi
                       key={item.href}
                       href={item.href}
                       onClick={onNavigate}
-                      className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-[13px] font-medium transition-all duration-200 group ${
+                      className={`relative flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[13px] font-medium transition-all duration-250 group ${
                         isActive
                           ? "text-white"
-                          : "text-white/45 hover:text-white/80 hover:bg-white/[0.03]"
+                          : "text-white/40 hover:text-white/75"
                       }`}
+                      style={!isActive ? undefined : {
+                        background: `linear-gradient(135deg, ${item.color}18, ${item.color}08)`,
+                        border: `1px solid ${item.color}25`,
+                        boxShadow: `0 0 20px ${item.color}08, inset 0 1px 0 rgba(255,255,255,0.04)`,
+                      }}
                     >
-                      {/* Active background */}
-                      {isActive && (
-                        <div
-                          className="absolute inset-0 rounded-lg"
+                      {/* Hover background for inactive */}
+                      {!isActive && (
+                        <div className="absolute inset-0 rounded-xl bg-white/[0.03] opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                      )}
+                      {/* Icon container */}
+                      <div
+                        className="relative z-10 h-8 w-8 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200"
+                        style={isActive ? {
+                          background: `linear-gradient(135deg, ${item.color}30, ${item.color}15)`,
+                          boxShadow: `0 0 12px ${item.color}20`,
+                        } : {
+                          background: `${item.color}08`,
+                        }}
+                      >
+                        <item.icon
+                          className="h-4 w-4 transition-all duration-200"
                           style={{
-                            background: "linear-gradient(90deg, rgba(0,212,255,0.12) 0%, rgba(168,85,247,0.06) 100%)",
-                            boxShadow: "inset 0 0 12px rgba(0,212,255,0.05)",
+                            color: isActive ? item.color : `${item.color}50`,
+                            filter: isActive ? `drop-shadow(0 0 6px ${item.color}80)` : undefined,
                           }}
                         />
-                      )}
-                      {/* Active left accent */}
-                      {isActive && (
-                        <div
-                          className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-full"
-                          style={{
-                            background: "linear-gradient(180deg, #00d4ff, #a855f7)",
-                            boxShadow: "0 0 8px rgba(0,212,255,0.5)",
-                          }}
-                        />
-                      )}
-                      <item.icon
-                        className={`h-[18px] w-[18px] relative z-10 transition-colors duration-200 ${
-                          isActive
-                            ? "text-[#00d4ff]"
-                            : "text-white/30 group-hover:text-white/60"
-                        }`}
-                        style={isActive ? { filter: "drop-shadow(0 0 4px rgba(0,212,255,0.4))" } : undefined}
-                      />
+                      </div>
                       <span className="relative z-10 flex-1">{item.label}</span>
                       {("isLive" in item && item.isLive) ? (
                         <span className="relative flex h-2 w-2 z-10">
@@ -151,10 +174,14 @@ function NavContent({ role, onNavigate }: { role: string; onNavigate?: () => voi
       </nav>
 
       {/* Bottom branding */}
-      <div className="mt-auto pt-4 px-3 border-t border-white/[0.04]">
-        <p className="text-[9px] text-white/15 font-mono">
-          v2.0 &middot; The Maker Football Incubator
-        </p>
+      <div className="mt-auto pt-4 px-3">
+        <div className="h-px bg-gradient-to-r from-transparent via-white/[0.06] to-transparent mb-3" />
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-1.5 rounded-full bg-[#00ff88]" style={{ boxShadow: "0 0 6px rgba(0,255,136,0.5)" }} />
+          <p className="text-[9px] text-white/20 font-mono">
+            v2.0 &middot; The Maker
+          </p>
+        </div>
       </div>
     </>
   );
