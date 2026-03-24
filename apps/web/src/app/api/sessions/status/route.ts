@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 
-export async function POST(request: NextRequest) {
+export async function PATCH(request: NextRequest) {
   try {
-    // Auth check
     const authClient = await createClient();
     const {
       data: { user },
@@ -16,7 +15,7 @@ export async function POST(request: NextRequest) {
     const admin = createAdminClient();
     const { data: profile } = await admin
       .from("users")
-      .select("*")
+      .select("academy_id")
       .eq("auth_user_id", user.id)
       .single();
 
@@ -24,41 +23,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No profile found" }, { status: 404 });
     }
 
-    const body = await request.json();
-    const { date, type, duration_minutes, location, notes, age_group } = body;
+    const { sessionId, status } = await request.json();
 
-    // Validation
-    if (!date) {
-      return NextResponse.json({ error: "Date is required" }, { status: 400 });
-    }
-
-    if (!type || !["training", "match", "friendly", "recovery"].includes(type)) {
+    if (!sessionId || !status) {
       return NextResponse.json(
-        { error: "Valid session type is required (training, match, friendly, recovery)" },
+        { error: "sessionId and status are required" },
         { status: 400 }
       );
     }
 
-    if (duration_minutes && (duration_minutes < 1 || duration_minutes > 600)) {
+    if (!["planned", "active", "completed", "reviewed"].includes(status)) {
       return NextResponse.json(
-        { error: "Duration must be between 1 and 600 minutes" },
+        { error: "Invalid status value" },
         { status: 400 }
       );
     }
 
     const { data: session, error } = await admin
       .from("sessions")
-      .insert({
-        academy_id: profile.academy_id,
-        coach_id: profile.id,
-        date,
-        type,
-        duration_minutes: duration_minutes || 90,
-        location: location || "HQ",
-        age_group: age_group || "2013",
-        notes: notes || null,
-        status: "planned",
-      })
+      .update({ status })
+      .eq("id", sessionId)
+      .eq("academy_id", profile.academy_id)
       .select()
       .single();
 
@@ -69,7 +54,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ session });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to create session" },
+      {
+        error:
+          err instanceof Error ? err.message : "Failed to update status",
+      },
       { status: 500 }
     );
   }

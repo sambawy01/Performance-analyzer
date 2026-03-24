@@ -10,6 +10,7 @@ import { SessionVideoTab } from "@/components/sessions/session-video-tab";
 import { SessionAiReportTab } from "@/components/sessions/session-ai-report-tab";
 import { SessionHeatmap } from "@/components/sessions/session-heatmap";
 import { MetricsEntry } from "@/components/sessions/metrics-entry";
+import { PostSessionReport } from "@/components/sessions/post-session-report";
 import {
   formatDate,
   ageGroupLabel,
@@ -123,7 +124,15 @@ export default async function SessionDetailPage({
           <h2 className="text-2xl font-bold">
             {sessionTypeLabel(session.type)} — {formatDate(session.date)}
           </h2>
-          <div className="flex gap-2 mt-1">
+          <div className="flex gap-2 mt-1 flex-wrap">
+            <Badge variant="outline" className={
+              session.status === 'reviewed' ? 'bg-[#a855f7]/10 text-[#a855f7] border-[#a855f7]/20' :
+              session.status === 'completed' ? 'bg-[#00ff88]/10 text-[#00ff88] border-[#00ff88]/20' :
+              session.status === 'active' ? 'bg-[#00d4ff]/10 text-[#00d4ff] border-[#00d4ff]/20' :
+              'bg-white/5 text-white/50 border-white/10'
+            }>
+              {(session.status ?? 'planned').charAt(0).toUpperCase() + (session.status ?? 'planned').slice(1)}
+            </Badge>
             <Badge variant="outline">{ageGroupLabel(session.age_group)}</Badge>
             <Badge variant="outline">{session.location}</Badge>
             <Badge variant="secondary">Coach: {coachName}</Badge>
@@ -146,6 +155,14 @@ export default async function SessionDetailPage({
           hasExistingMetrics={hasExistingMetrics}
         />
       )}
+
+      {/* Post-Session Report — shows for completed/reviewed sessions with metrics */}
+      <PostSessionReport
+        sessionId={id}
+        sessionStatus={session.status ?? 'planned'}
+        metrics={(session.wearable_metrics as any[]) ?? []}
+        loadRecords={loadRecords as any}
+      />
 
       {/* Tabs */}
       <Tabs defaultValue="overview">
