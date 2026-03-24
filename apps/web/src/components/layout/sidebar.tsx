@@ -20,6 +20,8 @@ import {
   GitCompare,
   FileBarChart,
   HeartPulse,
+  Waypoints,
+  Shield,
 } from "lucide-react";
 
 const navGroups = [
@@ -40,6 +42,7 @@ const navGroups = [
       { href: "/match-readiness", label: "Match Readiness", icon: HeartPulse, color: "#34d399" },
       { href: "/squad-builder", label: "Squad Builder", icon: ShieldHalf, color: "#4ade80" },
       { href: "/session-design", label: "Session Design", icon: ClipboardList, color: "#22d3ee" },
+      { href: "/tactic-board", label: "Tactic Board", icon: Waypoints, color: "#22d3ee" },
     ],
   },
   {
@@ -47,6 +50,7 @@ const navGroups = [
     color: "#a855f7",
     items: [
       { href: "/scout", label: "Scout", icon: Target, color: "#a855f7" },
+      { href: "/injury-prevention", label: "Injury Prevention", icon: Shield, color: "#ff3355" },
       { href: "/compare", label: "Compare", icon: GitCompare, color: "#c084fc" },
       { href: "/debrief", label: "Debrief", icon: FileBarChart, color: "#818cf8" },
       { href: "/reports", label: "Reports", icon: FileText, color: "#a78bfa" },
