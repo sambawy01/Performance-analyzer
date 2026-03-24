@@ -4,8 +4,8 @@ import { NextResponse, type NextRequest } from "next/server";
 export async function updateSession(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip auth check for login page and API routes — prevent redirect loops
-  if (pathname === "/login" || pathname.startsWith("/api/")) {
+  // Skip auth check for login, register, and API routes — prevent redirect loops
+  if (pathname === "/login" || pathname === "/register" || pathname.startsWith("/api/")) {
     return NextResponse.next();
   }
 

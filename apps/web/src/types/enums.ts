@@ -2,6 +2,7 @@ export const SessionType = {
   TRAINING: "training",
   MATCH: "match",
   FRIENDLY: "friendly",
+  RECOVERY: "recovery",
 } as const;
 export type SessionType = (typeof SessionType)[keyof typeof SessionType];
 

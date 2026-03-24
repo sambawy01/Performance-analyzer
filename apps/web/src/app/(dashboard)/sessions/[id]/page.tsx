@@ -9,6 +9,7 @@ import { SessionTacticalTab } from "@/components/sessions/session-tactical-tab";
 import { SessionVideoTab } from "@/components/sessions/session-video-tab";
 import { SessionAiReportTab } from "@/components/sessions/session-ai-report-tab";
 import { SessionHeatmap } from "@/components/sessions/session-heatmap";
+import { MetricsEntry } from "@/components/sessions/metrics-entry";
 import {
   formatDate,
   ageGroupLabel,
@@ -93,6 +94,18 @@ export default async function SessionDetailPage({
     notFound();
   }
 
+  // Fetch players for the age group (for metrics entry)
+  const { data: ageGroupPlayers } = await supabase
+    .from("players")
+    .select("id, name, jersey_number, position, hr_max_measured")
+    .eq("academy_id", session.academy_id)
+    .eq("age_group", session.age_group)
+    .eq("status", "active")
+    .order("jersey_number");
+
+  const hasExistingMetrics =
+    ((session.wearable_metrics as any[]) ?? []).length > 0;
+
   const coachName = (session as any).users?.name ?? "Unknown coach";
 
   return (
@@ -123,6 +136,16 @@ export default async function SessionDetailPage({
           Live HR View
         </Link>
       </div>
+
+      {/* Quick Metrics Entry — only shows when no existing metrics */}
+      {!hasExistingMetrics && (ageGroupPlayers ?? []).length > 0 && (
+        <MetricsEntry
+          sessionId={id}
+          durationMinutes={session.duration_minutes ?? 90}
+          players={(ageGroupPlayers ?? []) as any}
+          hasExistingMetrics={hasExistingMetrics}
+        />
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="overview">

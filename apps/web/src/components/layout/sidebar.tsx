@@ -22,6 +22,7 @@ import {
   HeartPulse,
   Waypoints,
   Shield,
+  Key,
 } from "lucide-react";
 
 const navGroups = [
@@ -68,6 +69,7 @@ const navGroups = [
     color: "#ff6b35",
     items: [
       { href: "/admin/users", label: "Users", icon: Settings, adminOnly: true, color: "#ff6b35" },
+      { href: "/admin/invites", label: "Invites", icon: Key, adminOnly: true, color: "#ff6b35" },
     ],
   },
 ];

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import { PlayerFilters } from "@/components/players/player-filters";
 import { PlayerCard } from "@/components/players/player-card";
+import { AddPlayerForm } from "@/components/players/add-player-form";
 
 interface PlayersPageProps {
   searchParams: Promise<{
@@ -112,6 +113,7 @@ export default async function PlayersPage({ searchParams }: PlayersPageProps) {
             {loadMap.size} with load data | {metricsMap.size} with wearable data | {cvMap.size} with CV data
           </p>
         </div>
+        <AddPlayerForm />
       </div>
 
       <Suspense fallback={<div className="h-10" />}>
