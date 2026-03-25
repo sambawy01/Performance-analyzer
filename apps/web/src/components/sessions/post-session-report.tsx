@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Sparkles,
   Loader2,
@@ -10,6 +10,7 @@ import {
   Activity,
   Shield,
   FileCheck,
+  RefreshCw,
 } from "lucide-react";
 
 interface PlayerMetric {
@@ -42,6 +43,7 @@ interface PostSessionReportProps {
   metrics: PlayerMetric[];
   loadRecords: LoadRecord[];
   previousLoadRecords?: LoadRecord[];
+  cachedReport?: string | null;
 }
 
 interface Alert {
@@ -56,8 +58,9 @@ export function PostSessionReport({
   sessionStatus,
   metrics,
   loadRecords,
+  cachedReport,
 }: PostSessionReportProps) {
-  const [report, setReport] = useState<string | null>(null);
+  const [report, setReport] = useState<string | null>(cachedReport ?? null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [markingReviewed, setMarkingReviewed] = useState(false);
@@ -66,10 +69,73 @@ export function PostSessionReport({
   );
 
   // Only show for completed/reviewed sessions with metrics
-  if (
-    !["completed", "reviewed"].includes(sessionStatus) ||
-    metrics.length === 0
-  ) {
+  const shouldShow =
+    ["completed", "reviewed"].includes(sessionStatus) &&
+    metrics.length > 0;
+
+  const generateReport = useCallback(
+    async (force = false) => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const res = await fetch("/api/ai/cached-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            type: "session_summary",
+            force,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error ?? "Failed to generate report");
+          return;
+        }
+
+        setReport(data.content);
+      } catch {
+        setError("Network error. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [sessionId]
+  );
+
+  // Auto-load or auto-generate on mount
+  useEffect(() => {
+    if (!shouldShow || report) return;
+
+    // No cached report passed from server — check API then auto-generate
+    async function loadOrGenerate() {
+      try {
+        // Check if cached report exists
+        const res = await fetch(
+          `/api/ai/cached-report?sessionId=${sessionId}&type=session_summary`
+        );
+        const data = await res.json();
+
+        if (data.cached && data.content) {
+          setReport(data.content);
+          return;
+        }
+
+        // No cache — auto-generate
+        generateReport(false);
+      } catch {
+        // Silently fail the cache check, try generating
+        generateReport(false);
+      }
+    }
+
+    loadOrGenerate();
+  }, [sessionId, shouldShow, report, generateReport]);
+
+  if (!shouldShow) {
     return null;
   }
 
@@ -78,7 +144,6 @@ export function PostSessionReport({
   for (const m of metrics) {
     const name = m.players?.name ?? "Unknown";
 
-    // HR avg > 90% of max = high cardiac stress
     if (m.hr_avg && m.hr_max && m.hr_avg > m.hr_max * 0.9) {
       alerts.push({
         playerName: name,
@@ -88,7 +153,6 @@ export function PostSessionReport({
       });
     }
 
-    // TRIMP > 200 = extreme training load
     if (m.trimp_score > 200) {
       alerts.push({
         playerName: name,
@@ -99,7 +163,6 @@ export function PostSessionReport({
     }
   }
 
-  // ACWR risk escalation
   for (const lr of loadRecords) {
     const name = lr.players?.name ?? "Unknown";
     if (lr.risk_flag === "amber" || lr.risk_flag === "red") {
@@ -109,32 +172,6 @@ export function PostSessionReport({
         detail: `ACWR ${lr.acwr_ratio} (${lr.risk_flag} zone)`,
         severity: lr.risk_flag as "amber" | "red",
       });
-    }
-  }
-
-  async function generateReport() {
-    setLoading(true);
-    setError(null);
-
-    try {
-      const res = await fetch("/api/ai/session-summary", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error ?? "Failed to generate report");
-        return;
-      }
-
-      setReport(data.summary);
-    } catch {
-      setError("Network error. Please try again.");
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -251,36 +288,27 @@ export function PostSessionReport({
               AI Session Report
             </h3>
           </div>
-          {isReviewed && (
-            <span className="flex items-center gap-1.5 text-xs text-[#a855f7] font-medium">
-              <CheckCircle2 className="h-3.5 w-3.5" />
-              Reviewed
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {report && !loading && (
+              <button
+                onClick={() => generateReport(true)}
+                className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors"
+                title="Regenerate report"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+                Regenerate
+              </button>
+            )}
+            {isReviewed && (
+              <span className="flex items-center gap-1.5 text-xs text-[#a855f7] font-medium">
+                <CheckCircle2 className="h-3.5 w-3.5" />
+                Reviewed
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="p-4">
-          {!report && !loading && (
-            <div className="text-center py-6">
-              <Sparkles className="h-8 w-8 text-[#a855f7]/40 mx-auto mb-3" />
-              <p className="text-sm text-white/40 mb-4">
-                Generate an AI analysis of this session including team
-                intensity, individual performance, and recommendations.
-              </p>
-              <button
-                onClick={generateReport}
-                className="h-12 px-6 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center gap-2 mx-auto active:scale-95"
-                style={{
-                  background: "linear-gradient(135deg, #a855f7, #00d4ff)",
-                  color: "white",
-                }}
-              >
-                <Sparkles className="h-4 w-4" />
-                Generate AI Session Report
-              </button>
-            </div>
-          )}
-
           {loading && (
             <div className="text-center py-8">
               <Loader2 className="h-8 w-8 text-[#a855f7] animate-spin mx-auto mb-3" />
@@ -290,11 +318,11 @@ export function PostSessionReport({
             </div>
           )}
 
-          {error && (
+          {error && !loading && (
             <div className="rounded-lg bg-[#ff3355]/10 border border-[#ff3355]/20 px-4 py-3">
               <p className="text-sm text-[#ff3355]">{error}</p>
               <button
-                onClick={generateReport}
+                onClick={() => generateReport(false)}
                 className="text-xs text-[#ff3355]/70 hover:text-[#ff3355] mt-1 underline"
               >
                 Try again
@@ -302,7 +330,7 @@ export function PostSessionReport({
             </div>
           )}
 
-          {report && (
+          {report && !loading && (
             <div className="space-y-4">
               <div className="prose prose-invert prose-sm max-w-none [&_h1]:text-lg [&_h2]:text-base [&_h3]:text-sm [&_p]:text-white/70 [&_li]:text-white/70 [&_strong]:text-white">
                 <div
@@ -334,6 +362,15 @@ export function PostSessionReport({
                   Mark as Reviewed
                 </button>
               )}
+            </div>
+          )}
+
+          {!report && !loading && !error && (
+            <div className="text-center py-6">
+              <Sparkles className="h-8 w-8 text-[#a855f7]/40 mx-auto mb-3" />
+              <p className="text-sm text-white/40 mb-4">
+                Preparing AI session analysis...
+              </p>
             </div>
           )}
         </div>

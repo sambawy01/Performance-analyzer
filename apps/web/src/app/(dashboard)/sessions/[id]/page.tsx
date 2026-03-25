@@ -90,6 +90,18 @@ export default async function SessionDetailPage({
   };
   });
 
+  // Fetch cached AI reports from ai_reports table
+  const { data: cachedReports } = await supabase
+    .from("ai_reports")
+    .select("report_type, content")
+    .eq("session_id", id);
+
+  const cachedReportMap = new Map(
+    (cachedReports ?? []).map((r: any) => [r.report_type, r.content])
+  );
+  const cachedSessionReport = cachedReportMap.get("session_summary") ?? null;
+  const cachedTacticalReport = cachedReportMap.get("tactical_analysis") ?? null;
+
 
   if (!session) {
     notFound();
@@ -162,6 +174,7 @@ export default async function SessionDetailPage({
         sessionStatus={session.status ?? 'planned'}
         metrics={(session.wearable_metrics as any[]) ?? []}
         loadRecords={loadRecords as any}
+        cachedReport={cachedSessionReport}
       />
 
       {/* Tabs */}
@@ -195,7 +208,12 @@ export default async function SessionDetailPage({
         </TabsContent>
 
         <TabsContent value="tactical">
-          <SessionTacticalTab tactical={tactical as any} history={tactHistory} />
+          <SessionTacticalTab
+            tactical={tactical as any}
+            history={tactHistory}
+            sessionId={id}
+            cachedTacticalReport={cachedTacticalReport}
+          />
         </TabsContent>
 
         <TabsContent value="heatmap">

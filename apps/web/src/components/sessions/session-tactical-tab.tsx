@@ -1,19 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardHeader,
   CardTitle,
   CardContent,
-  CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Crosshair,
   ArrowUpRight,
   ArrowDownRight,
-  Maximize2,
   Zap,
   Brain,
   Loader2,
@@ -23,6 +21,7 @@ import {
   Target,
   Shield,
   Swords,
+  RefreshCw,
 } from "lucide-react";
 import { MetricInfo } from "@/components/ui/metric-info";
 
@@ -50,6 +49,13 @@ interface TacticalHistory {
   transition_speed_atk_s: number | null;
   transition_speed_def_s: number | null;
   avg_formation: string | null;
+}
+
+interface SessionTacticalTabProps {
+  tactical: TacticalData | null;
+  history: TacticalHistory[];
+  sessionId: string;
+  cachedTacticalReport?: string | null;
 }
 
 // Assess metric with comparison to history
@@ -82,10 +88,10 @@ function getPossessionAnalysis(pct: number, type: string): string {
 }
 
 function getCompactnessAnalysis(avg: number, std: number): string {
-  if (avg < 25) return `Very compact shape (${(avg ?? 0).toFixed(1)}m). The team stayed tight and disciplined. Low variability (±${(std ?? 0).toFixed(1)}m) shows good collective awareness. Risk: can be vulnerable to balls over the top.`;
-  if (avg < 30) return `Good compactness (${(avg ?? 0).toFixed(1)}m). The team maintained a solid shape without being too narrow. Variability of ±${(std ?? 0).toFixed(1)}m is normal.`;
-  if (avg < 35) return `Moderate compactness (${(avg ?? 0).toFixed(1)}m). The team occasionally stretched, creating gaps. ±${(std ?? 0).toFixed(1)}m variability suggests inconsistency in shape maintenance.`;
-  return `Spread out shape (${(avg ?? 0).toFixed(1)}m). The team was stretched, with significant gaps between lines. High variability (±${(std ?? 0).toFixed(1)}m) indicates poor collective positioning. Needs work in team shape drills.`;
+  if (avg < 25) return `Very compact shape (${(avg ?? 0).toFixed(1)}m). The team stayed tight and disciplined. Low variability (+-${(std ?? 0).toFixed(1)}m) shows good collective awareness. Risk: can be vulnerable to balls over the top.`;
+  if (avg < 30) return `Good compactness (${(avg ?? 0).toFixed(1)}m). The team maintained a solid shape without being too narrow. Variability of +-${(std ?? 0).toFixed(1)}m is normal.`;
+  if (avg < 35) return `Moderate compactness (${(avg ?? 0).toFixed(1)}m). The team occasionally stretched, creating gaps. +-${(std ?? 0).toFixed(1)}m variability suggests inconsistency in shape maintenance.`;
+  return `Spread out shape (${(avg ?? 0).toFixed(1)}m). The team was stretched, with significant gaps between lines. High variability (+-${(std ?? 0).toFixed(1)}m) indicates poor collective positioning. Needs work in team shape drills.`;
 }
 
 function getTransitionAnalysis(atk: number, def: number): string {
@@ -99,9 +105,63 @@ function getTransitionAnalysis(atk: number, def: number): string {
   return analysis;
 }
 
-export function SessionTacticalTab({ tactical, history }: { tactical: TacticalData | null; history: TacticalHistory[] }) {
+export function SessionTacticalTab({ tactical, history, sessionId, cachedTacticalReport }: SessionTacticalTabProps) {
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(cachedTacticalReport ?? null);
+
+  const generateAnalysis = useCallback(
+    async (force = false) => {
+      setAiLoading(true);
+      try {
+        const res = await fetch("/api/ai/cached-report", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            sessionId,
+            type: "tactical_analysis",
+            force,
+          }),
+        });
+        const data = await res.json();
+        if (res.ok && data.content) {
+          setAiAnalysis(data.content);
+        } else {
+          setAiAnalysis("Failed to generate analysis. " + (data.error ?? ""));
+        }
+      } catch {
+        setAiAnalysis("Failed to generate analysis.");
+      } finally {
+        setAiLoading(false);
+      }
+    },
+    [sessionId]
+  );
+
+  // Auto-load or auto-generate on mount (only if tactical data exists)
+  useEffect(() => {
+    if (!tactical || aiAnalysis) return;
+
+    async function loadOrGenerate() {
+      try {
+        const res = await fetch(
+          `/api/ai/cached-report?sessionId=${sessionId}&type=tactical_analysis`
+        );
+        const data = await res.json();
+
+        if (data.cached && data.content) {
+          setAiAnalysis(data.content);
+          return;
+        }
+
+        // No cache — auto-generate
+        generateAnalysis(false);
+      } catch {
+        generateAnalysis(false);
+      }
+    }
+
+    loadOrGenerate();
+  }, [sessionId, tactical, aiAnalysis, generateAnalysis]);
 
   if (!tactical) {
     return (
@@ -125,7 +185,6 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
   const histPressing = history.filter(h => h.pressing_intensity != null).map(h => h.pressing_intensity!);
   const histPossession = history.filter(h => h.possession_pct != null).map(h => h.possession_pct!);
   const histCompact = history.filter(h => h.compactness_avg != null).map(h => h.compactness_avg!);
-  const histTransAtk = history.filter(h => h.transition_speed_atk_s != null).map(h => h.transition_speed_atk_s!);
 
   const pressingInfo = tactical.pressing_intensity ? getPressingAnalysis(tactical.pressing_intensity) : null;
   const pressingTrend = tactical.pressing_intensity ? assessMetric(tactical.pressing_intensity, histPressing, "Pressing intensity") : null;
@@ -153,7 +212,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                 <div className="flex flex-wrap gap-1.5">
                   {tactical.formation_snapshots.map((snap, i) => (
                     <Badge key={i} variant="outline" className="font-mono text-xs border-white/10">
-                      {snap.minute}&apos; → {snap.formation}
+                      {snap.minute}&apos; &rarr; {snap.formation}
                     </Badge>
                   ))}
                 </div>
@@ -261,7 +320,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                 <div>
                   <p className="data-label mb-1"><MetricInfo term="compactness">Compactness</MetricInfo></p>
                   <p className="text-xl font-mono font-bold text-white">{(tactical.compactness_avg ?? 0).toFixed(1)}m</p>
-                  <p className="text-xs text-white/60">±{(tactical.compactness_std ?? 0).toFixed(1)}m</p>
+                  <p className="text-xs text-white/60">+-{(tactical.compactness_std ?? 0).toFixed(1)}m</p>
                 </div>
                 {tactical.defensive_line_height_avg !== null && (
                   <div>
@@ -273,8 +332,8 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                 {tactical.team_width_avg !== null && tactical.team_length_avg !== null && (
                   <div>
                     <p className="data-label mb-1"><MetricInfo term="team-shape">Team Shape</MetricInfo></p>
-                    <p className="text-xl font-mono font-bold text-white">{(tactical.team_width_avg ?? 0).toFixed(0)}×{(tactical.team_length_avg ?? 0).toFixed(0)}</p>
-                    <p className="text-xs text-white/60">W × L meters</p>
+                    <p className="text-xl font-mono font-bold text-white">{(tactical.team_width_avg ?? 0).toFixed(0)}x{(tactical.team_length_avg ?? 0).toFixed(0)}</p>
+                    <p className="text-xs text-white/60">W x L meters</p>
                   </div>
                 )}
               </div>
@@ -301,7 +360,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                     <ArrowUpRight className="h-5 w-5 text-[#00ff88]" />
                   </div>
                   <div>
-                    <p className="data-label">Def → Atk</p>
+                    <p className="data-label">Def &rarr; Atk</p>
                     <p className="text-xl font-mono font-bold text-[#00ff88]">{(tactical.transition_speed_atk_s ?? 0).toFixed(1)}s</p>
                   </div>
                 </div>
@@ -310,7 +369,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                     <ArrowDownRight className="h-5 w-5 text-[#ff3355]" />
                   </div>
                   <div>
-                    <p className="data-label">Atk → Def</p>
+                    <p className="data-label">Atk &rarr; Def</p>
                     <p className="text-xl font-mono font-bold text-[#ff3355]">{(tactical.transition_speed_def_s ?? 0).toFixed(1)}s</p>
                   </div>
                 </div>
@@ -331,56 +390,30 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
               <Brain className="h-4 w-4 text-[#a855f7] drop-shadow-[0_0_6px_rgba(168,85,247,0.5)]" />
               <span className="text-gradient">AI Tactical Intelligence</span>
             </CardTitle>
-            <button
-              onClick={async () => {
-                setAiLoading(true);
-                try {
-                  const res = await fetch("/api/ai/chat", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      messages: [{
-                        role: "user",
-                        content: `Provide a tactical deep-dive analysis for this session. The tactical data is:
-Formation: ${tactical.avg_formation}
-Formation changes: ${tactical.formation_snapshots?.map(s => `${s.minute}' → ${s.formation}`).join(", ") ?? "none"}
-Possession: ${tactical.possession_pct}%
-PPDA (pressing intensity): ${tactical.pressing_intensity}
-Compactness: ${tactical.compactness_avg}m (±${tactical.compactness_std}m)
-Defensive line: ${tactical.defensive_line_height_avg}m
-Team shape: ${tactical.team_width_avg}m × ${tactical.team_length_avg}m
-Transition Def→Atk: ${tactical.transition_speed_atk_s}s
-Transition Atk→Def: ${tactical.transition_speed_def_s}s
-
-Compare these to the team's recent tactical metrics. Give me:
-1. What tactical patterns are emerging across recent sessions?
-2. What's working and what needs coaching attention?
-3. How does this session's tactical profile compare to the best-performing sessions?
-4. 3 specific tactical drills to work on based on this data
-5. Any concerns about tactical discipline or shape?
-
-Reference specific numbers and compare to previous sessions.`
-                      }],
-                      context: `Tactical history for comparison:\n${history.map(h => `${h.date} ${h.type}: Formation ${h.avg_formation}, Possession ${h.possession_pct}%, PPDA ${h.pressing_intensity}, Compactness ${h.compactness_avg}m, Transition ${h.transition_speed_atk_s}s/${h.transition_speed_def_s}s`).join("\n")}`,
-                    }),
-                  });
-                  const data = await res.json();
-                  setAiAnalysis(data.reply);
-                } catch (e) {
-                  setAiAnalysis("Failed to generate analysis.");
-                } finally {
-                  setAiLoading(false);
-                }
-              }}
-              disabled={aiLoading}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#a855f7] to-[#00d4ff] px-3 py-1.5 text-xs font-medium text-white hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-300 disabled:opacity-50"
-            >
-              {aiLoading ? <><Loader2 className="h-3 w-3 animate-spin" /> Analyzing...</> : <><Brain className="h-3 w-3" /> Deep Analysis</>}
-            </button>
+            <div className="flex items-center gap-2">
+              {aiAnalysis && !aiLoading && (
+                <button
+                  onClick={() => generateAnalysis(true)}
+                  className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/70 transition-colors"
+                  title="Regenerate analysis"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                  Regenerate
+                </button>
+              )}
+              {!aiAnalysis && !aiLoading && (
+                <button
+                  onClick={() => generateAnalysis(false)}
+                  className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-[#a855f7] to-[#00d4ff] px-3 py-1.5 text-xs font-medium text-white hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all duration-300"
+                >
+                  <Brain className="h-3 w-3" /> Deep Analysis
+                </button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          {aiAnalysis ? (
+          {aiAnalysis && !aiLoading ? (
             <div className="space-y-1.5">
               {aiAnalysis.split("\n").map((line, i) => {
                 if (!line.trim()) return <div key={i} className="h-2" />;
@@ -390,7 +423,7 @@ Reference specific numbers and compare to previous sessions.`
                 if (line.trim().startsWith("- ") || line.trim().startsWith("• ")) {
                   return (
                     <div key={i} className="flex items-start gap-2 text-sm ml-2">
-                      <span className="text-[#a855f7] mt-0.5">•</span>
+                      <span className="text-[#a855f7] mt-0.5">&#8226;</span>
                       <span className="text-white/60 leading-relaxed">{line.replace(/^[-•]\s*/, "")}</span>
                     </div>
                   );
@@ -402,15 +435,15 @@ Reference specific numbers and compare to previous sessions.`
                 <span className="text-xs text-white/60 italic">Coach M8 AI — tactical analysis based on session data + historical comparison</span>
               </div>
             </div>
-          ) : !aiLoading ? (
-            <p className="text-sm text-white/60 italic py-4 text-center">
-              Click &quot;Deep Analysis&quot; for AI-powered tactical intelligence comparing this session to your team&apos;s patterns.
-            </p>
-          ) : (
+          ) : aiLoading ? (
             <div className="flex items-center justify-center py-6 gap-2">
               <Loader2 className="h-5 w-5 text-[#a855f7] animate-spin" />
               <span className="text-sm text-[#a855f7]">Analyzing tactical patterns...</span>
             </div>
+          ) : (
+            <p className="text-sm text-white/60 italic py-4 text-center">
+              Preparing AI tactical intelligence...
+            </p>
           )}
         </CardContent>
       </Card>
