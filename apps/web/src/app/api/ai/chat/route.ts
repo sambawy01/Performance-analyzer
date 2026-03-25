@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { buildFullContext } from "@/lib/ai/build-context";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichSquadContext } from "@/lib/ai/enrich-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -32,41 +33,52 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // Build full academy data context
-    const fullContext = await buildFullContext(profile.academy_id);
+    // Fetch full squad data for enriched context
+    const [playersRes, metricsRes, cvRes, loadRes, sessionsRes, tacticalRes] = await Promise.all([
+      supabase.from("players").select("*").eq("academy_id", profile.academy_id).eq("status", "active").order("jersey_number"),
+      supabase.from("wearable_metrics").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("cv_metrics").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("load_records").select("*").order("date", { ascending: false }).limit(500),
+      supabase.from("sessions").select("*").eq("academy_id", profile.academy_id).order("date", { ascending: false }).limit(20),
+      supabase.from("tactical_metrics").select("*").limit(20),
+    ]);
 
-    const systemPrompt = `You are Coach M8 AI, an elite football performance analyst embedded in a youth football academy's analytics platform. You're talking to ${profile.name} (${profile.role}).
+    const players = playersRes.data ?? [];
+    const playerIds = players.map(p => p.id);
+    const allMetrics = (metricsRes.data ?? []).filter((m: any) => playerIds.includes(m.player_id));
+    const allCvMetrics = (cvRes.data ?? []).filter((m: any) => playerIds.includes(m.player_id));
+    const allLoadRecords = (loadRes.data ?? []).filter((l: any) => playerIds.includes(l.player_id));
 
-You have COMPLETE access to the academy's data. You know every player, every session, every HR reading, every load record, and every tactical metric. Use this data to give precise, data-backed answers.
+    const enrichedContext = enrichSquadContext(
+      players,
+      allMetrics,
+      allCvMetrics,
+      allLoadRecords,
+      sessionsRes.data ?? [],
+      tacticalRes.data ?? []
+    );
 
-Your expertise:
-- Heart rate zone analysis (Z1-Z5) and what each zone means for youth players
-- TRIMP (Training Impulse) scoring and session load quantification
-- ACWR (Acute:Chronic Workload Ratio) — optimal 0.8-1.3, caution 1.3-1.5, danger >1.5
-- Youth player development (ages 12-16), growth considerations, injury prevention
-- Tactical analysis: formations, pressing intensity (PPDA), transitions, compactness
-- Periodization and weekly load planning for academy football
-- Player comparison and benchmarking within the squad
-- Match preparation and squad selection based on load data
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}
+
+You are having a conversation with ${profile.name} (${profile.role}) at The Maker Football Incubator.
+
+You have COMPLETE access to the academy's enriched data below. Use it to give precise, data-backed answers. Always cite specific player names, jersey numbers, ACWR values, TRIMP scores, and percentile rankings.
 
 Your communication style:
 - Direct and actionable — coaches don't have time for fluff
-- ALWAYS cite specific player names, jersey numbers, and data points
-- Give concrete recommendations ("rest #7 Mostafa tomorrow, his ACWR is 1.73", not "consider reducing load")
-- Compare players to each other and to their own baselines
+- ALWAYS cite specific data points: "rest #7 Mostafa tomorrow, his ACWR is 1.73 (danger zone, 4-5x injury risk per Gabbett 2016)" not "consider reducing load"
+- Compare players to each other using percentile ranks and position-specific benchmarks
+- Give concrete recommendations with specific thresholds and timelines
 - Think like a performance analyst who's been in every session
 - Be honest about limitations — if data is missing, say what's needed
-- When discussing squad selection or tactics, reference the actual data
 
-IMPORTANT: You have the FULL academy database below. Reference it in every answer.
-
-${fullContext}
+${enrichedContext}
 
 ${pageContext ? `\nCURRENT VIEW CONTEXT:\n${pageContext}` : ""}`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1000,
+      max_tokens: 1200,
       system: systemPrompt,
       messages: messages.map((m: any) => ({
         role: m.role,

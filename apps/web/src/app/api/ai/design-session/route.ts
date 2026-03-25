@@ -1,20 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { buildFullContext } from "@/lib/ai/build-context";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichSquadContext } from "@/lib/ai/enrich-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const SESSION_DESIGN_SYSTEM_PROMPT = `You are an elite youth football coach and sports scientist at Coach M8. You design training sessions that are periodized, load-aware, and tactically purposeful.
-
-You understand:
-- Session structure: warm-up, activation, main phase, cool-down
-- Youth development principles: fun, age-appropriate, skill-focused
-- Load management: players with high ACWR need modified intensity or rest
-- Drill design: space dimensions, player numbers, rules, progressions
-- Intensity zones: aerobic base (Z2-Z3), threshold work (Z4), anaerobic (Z5)
-
-Your session plans are detailed, practical, and immediately usable by a coach on the training pitch.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -52,49 +42,91 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    const context = await buildFullContext(profile.academy_id);
+    // Fetch full squad data for enriched context
+    const [playersRes, metricsRes, cvRes, loadRes, sessionsRes, tacticalRes] = await Promise.all([
+      supabase.from("players").select("*").eq("academy_id", profile.academy_id).eq("status", "active"),
+      supabase.from("wearable_metrics").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("cv_metrics").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("load_records").select("*").order("date", { ascending: false }).limit(500),
+      supabase.from("sessions").select("*").eq("academy_id", profile.academy_id).order("date", { ascending: false }).limit(20),
+      supabase.from("tactical_metrics").select("*").limit(20),
+    ]);
 
-    const prompt = `Design a ${type} training session for ${playerCount} U16 players, ${duration} minutes, focused on ${focus}.
-${notes ? `\nCoach's additional notes: ${notes}` : ""}
+    const players = playersRes.data ?? [];
+    const playerIds = players.map(p => p.id);
+    const allMetrics = (metricsRes.data ?? []).filter((m: any) => playerIds.includes(m.player_id));
+    const allCvMetrics = (cvRes.data ?? []).filter((m: any) => playerIds.includes(m.player_id));
+    const allLoadRecords = (loadRes.data ?? []).filter((l: any) => playerIds.includes(l.player_id));
 
-${context}
+    const enrichedContext = enrichSquadContext(
+      players,
+      allMetrics,
+      allCvMetrics,
+      allLoadRecords,
+      sessionsRes.data ?? [],
+      tacticalRes.data ?? []
+    );
 
-Using the team data above (especially current ACWR load status and injury risk flags), design a complete session plan with these sections (use ## headers):
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.SESSION_DESIGN}`;
+
+    const warmUpMins = Math.round(duration * 0.2);
+    const mainMins = Math.round(duration * 0.6);
+    const coolDownMins = Math.round(duration * 0.2);
+
+    const prompt = `Design a ${type} training session using the block periodization framework and load-aware modifications:
+
+SESSION PARAMETERS:
+- Type: ${type}
+- Players: ${playerCount}
+- Duration: ${duration} minutes (Warm-up: ${warmUpMins}min, Main: ${mainMins}min, Cool-down: ${coolDownMins}min)
+- Focus: ${focus}
+${notes ? `- Coach's notes: ${notes}` : ""}
+
+${enrichedContext}
+
+Using the squad data above (especially current ACWR status and injury risk flags), design a complete session plan following the SESSION DESIGN framework:
 
 ## Session Overview
-- Type: ${type} | Duration: ${duration} min | Players: ${playerCount} | Focus: ${focus}
-- Expected intensity: which HR zones to target
+- Target HR zones and expected intensity classification
+- Where this session fits in the block periodization cycle
 - Key objective in one sentence
 
-## Warm-Up (${Math.round(duration * 0.2)} minutes)
-Describe 2 warm-up activities. For each: drill name, setup (space dimensions, number of players), rules, duration. Start with dynamic movement, progress to football-specific activation.
+## Warm-Up (${warmUpMins} minutes)
+Phase 1: General activation (describe drill with exact setup)
+Phase 2: Football-specific activation (describe drill with exact setup)
+Target HR: Z1-Z2, progressing to Z3
 
-## Main Phase (${Math.round(duration * 0.6)} minutes)
-Describe 2-3 main drills focused on ${focus}. For each drill:
+## Main Phase (${mainMins} minutes)
+2-3 drills focused on ${focus}. For EACH drill specify:
 - **Drill Name**
-- Setup: dimensions (e.g. 30x20m), player numbers, equipment
-- Rules: how it works, scoring, progressions
-- Duration and reps
-- Coaching points: 2-3 key technical/tactical cues
-- Expected intensity zone
+- Setup: exact dimensions (e.g., 30x20m), player numbers, equipment needed
+- Rules: how it works, scoring system, progressions (easy → hard)
+- Duration: minutes and reps/sets
+- Work-to-rest ratio (based on target intensity zone)
+- Coaching points: 3 specific technical/tactical cues
+- Expected HR zone
 
-## Cool-Down (${Math.round(duration * 0.2)} minutes)
-Appropriate recovery activities. Include technical work at low intensity.
+## Cool-Down (${coolDownMins} minutes)
+Recovery activities with low-intensity technical work
 
 ## Player Modifications
-Based on ACWR data above, list specific players who should have modified involvement (reduced intensity, limited sprinting, or excluded from high-intensity drills). Reference their ACWR and risk flag.
+List EVERY player with ACWR >1.3 and specify their exact modifications:
+- What they should skip or modify
+- Their max duration and HR ceiling
+- Alternative activities if excluded from main drills
 
 ## Expected Load Profile
-- Expected TRIMP range for this session
-- Which HR zones should players spend most time in
-- Any load concerns based on current team state
+- Expected TRIMP range for the full session
+- Target zone distribution (% in each zone)
+- Z4+Z5 target percentage
+- Load impact on squad ACWR trajectory
 
-Be specific and practical. Use real dimensions, real drill names, specific coaching cues. This should be immediately usable by a coach.`;
+Be specific and practical. Every drill must have exact dimensions, player numbers, rules, and coaching points.`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1800,
-      system: SESSION_DESIGN_SYSTEM_PROMPT,
+      max_tokens: 2500,
+      system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
 

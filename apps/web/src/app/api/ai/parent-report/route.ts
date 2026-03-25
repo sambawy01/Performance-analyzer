@@ -1,12 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichPlayerContext } from "@/lib/ai/enrich-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
-const PARENT_SYSTEM_PROMPT = `You are a warm, encouraging youth football development specialist writing monthly progress reports for parents.
-
-Your tone is positive, supportive, and clear — parents are not sports scientists, so avoid jargon. Use simple language that makes parents feel proud of their child's progress. Always find genuine positives, even for players who need development. Be honest but constructive.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -51,48 +49,62 @@ export async function POST(request: NextRequest) {
       ? Math.floor((Date.now() - new Date(player.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
       : null;
 
-    // Fetch wearable metrics (NO FK JOINS)
-    const { data: metrics } = await supabase
-      .from("wearable_metrics")
-      .select("session_id, hr_avg, hr_max, trimp_score, hr_recovery_60s, created_at")
-      .eq("player_id", playerId)
-      .order("created_at", { ascending: false })
-      .limit(20);
+    // Fetch player data
+    const [metricsRes, cvRes, loadRes, snapshotsRes] = await Promise.all([
+      supabase.from("wearable_metrics").select("*").eq("player_id", playerId).order("created_at", { ascending: false }).limit(20),
+      supabase.from("cv_metrics").select("*").eq("player_id", playerId).order("created_at", { ascending: false }).limit(20),
+      supabase.from("load_records").select("*").eq("player_id", playerId).order("date", { ascending: false }).limit(20),
+      supabase.from("development_snapshots").select("*").eq("player_id", playerId).order("month", { ascending: false }).limit(3),
+    ]);
 
-    // Fetch session details separately
-    const sessionIds = [...new Set((metrics ?? []).map((m) => m.session_id))];
+    const metrics = metricsRes.data ?? [];
+    const cvMetrics = cvRes.data ?? [];
+    const loadHistory = loadRes.data ?? [];
+    const snapshots = snapshotsRes.data ?? [];
+
+    // Fetch squad data for percentile context
+    const { data: allPlayers } = await supabase
+      .from("players")
+      .select("id")
+      .eq("academy_id", profile.academy_id)
+      .eq("status", "active");
+    const allPlayerIds = (allPlayers ?? []).map(p => p.id);
+
+    const [squadMetricsRes, squadCvRes, squadLoadRes] = await Promise.all([
+      allPlayerIds.length > 0
+        ? supabase.from("wearable_metrics").select("*").in("player_id", allPlayerIds).order("created_at", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+      allPlayerIds.length > 0
+        ? supabase.from("cv_metrics").select("*").in("player_id", allPlayerIds).order("created_at", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+      allPlayerIds.length > 0
+        ? supabase.from("load_records").select("*").in("player_id", allPlayerIds).order("date", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    // Build enriched context
+    const enrichedContext = enrichPlayerContext(
+      player,
+      metrics,
+      cvMetrics,
+      loadHistory,
+      squadMetricsRes.data ?? [],
+      squadCvRes.data ?? [],
+      squadLoadRes.data ?? []
+    );
+
+    // Calculate stats for response JSON
+    const sessionIds = [...new Set(metrics.map((m: any) => m.session_id))];
     const { data: sessions } = sessionIds.length > 0
       ? await supabase.from("sessions").select("id, date, type").in("id", sessionIds).eq("academy_id", profile.academy_id)
       : { data: [] };
-    const sessionMap = new Map((sessions ?? []).map((s) => [s.id, s]));
+    const sessionMap = new Map((sessions ?? []).map((s: any) => [s.id, s]));
 
-    // Enrich metrics with session data
-    const enrichedMetrics = (metrics ?? []).map((m: any) => ({
+    const enrichedMetrics = metrics.map((m: any) => ({
       ...m,
       session: sessionMap.get(m.session_id) ?? null,
     }));
 
-    // Fetch load history
-    const { data: loadHistory } = await supabase
-      .from("load_records")
-      .select("*")
-      .eq("player_id", playerId)
-      .order("date", { ascending: false })
-      .limit(20);
-
-    // Fetch development snapshots
-    const { data: snapshots } = await supabase
-      .from("development_snapshots")
-      .select("*")
-      .eq("player_id", playerId)
-      .order("month", { ascending: false })
-      .limit(3);
-
-    // Calculate stats
-    const sessionCount = enrichedMetrics.length;
-    const latestLoad = loadHistory?.[0] ?? null;
-
-    // Calculate attendance rate (sessions attended vs expected ~2/week for 28 days = 8)
     const twentyEightDaysAgo = new Date();
     twentyEightDaysAgo.setDate(twentyEightDaysAgo.getDate() - 28);
     const recentSessions = enrichedMetrics.filter(
@@ -100,78 +112,57 @@ export async function POST(request: NextRequest) {
     );
     const attendanceRate = Math.min(100, Math.round((recentSessions.length / 8) * 100));
 
-    // Calculate HR improvement (compare first 5 vs last 5 sessions)
     let fitnessImprovement = 0;
     if (enrichedMetrics.length >= 6) {
       const old5 = enrichedMetrics.slice(-5);
       const new5 = enrichedMetrics.slice(0, 5);
       const oldAvgHr = old5.reduce((s: number, m: any) => s + m.hr_avg, 0) / old5.length;
       const newAvgHr = new5.reduce((s: number, m: any) => s + m.hr_avg, 0) / new5.length;
-      // Lower average HR = better fitness
       fitnessImprovement = Math.round(((oldAvgHr - newAvgHr) / oldAvgHr) * 100);
     }
 
-    // Build data summary for Claude
-    const recentSessionsSummary = enrichedMetrics.slice(0, 10).map((m: any) => ({
-      date: m.session?.date,
-      type: m.session?.type,
-      hr_avg: m.hr_avg,
-      trimp: Math.round(m.trimp_score),
-      recovery: m.hr_recovery_60s,
-    }));
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.PARENT_REPORT}`;
 
-    const prompt = `Generate a monthly parent report for ${player.name}.
+    // Build parent-friendly context (translate technical data)
+    let parentContext = `
+PLAYER: ${player.name} | #${player.jersey_number} | ${player.position} | Age: ${age ?? "?"} | U${2026 - parseInt(player.age_group)}
 
-PLAYER DETAILS:
-- Name: ${player.name}
-- Age: ${age ?? "Unknown"} years old
-- Position: ${player.position}
-- Age Group: U${2026 - parseInt(player.age_group)}
-- Jersey Number: #${player.jersey_number}
+INTERNAL DATA (translate to parent-friendly language — DO NOT show raw numbers for ACWR or risk scores):
+${enrichedContext}
 
-ATTENDANCE & PARTICIPATION:
-- Total sessions tracked this period: ${sessionCount}
-- Sessions in last 28 days: ${recentSessions.length}
-- Estimated attendance rate: ${attendanceRate}%
+ATTENDANCE: ${recentSessions.length} sessions in last 28 days (${attendanceRate}% of expected)
+FITNESS TREND: ${fitnessImprovement > 0 ? `Heart efficiency improved by ${fitnessImprovement}%` : fitnessImprovement < 0 ? "Slight increase in effort required (normal during training blocks)" : "Stable fitness level"}`;
 
-RECENT TRAINING DATA (last 10 sessions):
-${recentSessionsSummary.map(s => `- ${s.date} | ${s.type} | Effort level: ${s.hr_avg} bpm avg | Session load: ${s.trimp}`).join('\n')}
+    if (snapshots.length > 0) {
+      parentContext += `\n\nPREVIOUS DEVELOPMENT NOTES:\n${snapshots.map((s: any) => `- ${s.month}: ${s.ai_development_narrative ?? 'No notes'}`).join('\n')}`;
+    }
 
-INJURY RISK STATUS:
-- Current ACWR (training load ratio): ${latestLoad?.acwr_ratio ?? 'N/A'} (${latestLoad?.risk_flag ?? 'unknown'})
-- Note: Optimal range is 0.8-1.3 (meaning the player is well-conditioned and not overloaded)
+    const prompt = `Generate a warm, encouraging monthly parent report for ${player.name}'s family.
 
-FITNESS TREND:
-- Average HR trend: ${fitnessImprovement > 0 ? `Improved by ${fitnessImprovement}% (heart working more efficiently)` : fitnessImprovement < 0 ? `Slight increase (normal during heavy training phases)` : 'Stable'}
+${parentContext}
 
-${snapshots && snapshots.length > 0 ? `DEVELOPMENT NOTES FROM PREVIOUS REPORTS:\n${snapshots.map((s: any) => `- ${s.month}: ${s.ai_development_narrative ?? 'No notes'}`).join('\n')}` : ''}
-
-Write a warm, encouraging monthly parent report with these sections (use ## headers):
-
-## Overall Development Summary
-2-3 sentences that capture this month's highlights. Start with something genuinely positive. Write as if speaking directly to the parent.
-
-## Physical Fitness Progress
-Explain how the player's fitness has developed in simple terms. Mention the effort they've put into training sessions. No technical jargon — explain what "training load" means in plain language if you need to mention it.
-
+Follow the PARENT REPORT output format exactly:
+## Monthly Highlights
+## Training & Fitness Progress
 ## Attendance & Commitment
-Comment on their attendance and engagement. This is a reflection of their dedication.
+## Areas of Growth This Month
+## Looking Ahead: Next Month's Focus
+## How You Can Help at Home
+## A Note from the Coaching Team
 
-## Health & Wellbeing
-Reassure parents about injury prevention measures. Explain that the academy monitors training load to keep players healthy and prevent overtraining. Keep this positive and reassuring.
-
-## Areas of Growth
-2-3 specific areas where the player has shown improvement or development this month.
-
-## Coach's Message
-A warm, personal closing message to the parent. Thank them for their support. Give 1-2 things the parent can do at home to support their child's development (sleep, nutrition, hydration — simple things).
-
-Keep the language simple and warm. No sports science jargon. Write as if you genuinely care about this child's development.`;
+CRITICAL RULES:
+- NEVER mention ACWR numbers, risk percentages, or injury risk language
+- NEVER compare this player to other players by name
+- Compare the player to THEMSELVES (their own improvement over time)
+- Translate all technical data into parent-friendly language
+- Frame everything through a growth mindset
+- Be genuine — find real positives from the data, don't manufacture them
+- Keep the tone warm and proud, as if you genuinely care about this child`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 1200,
-      system: PARENT_SYSTEM_PROMPT,
+      max_tokens: 1500,
+      system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
 

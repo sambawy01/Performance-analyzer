@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichSquadContext } from "@/lib/ai/enrich-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -15,7 +17,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Get user profile with academy_id (ignore client-sent academyId)
+    // Get user profile with academy_id
     const supabase = createAdminClient();
     const { data: profile } = await supabase
       .from("users")
@@ -33,10 +35,10 @@ export async function POST(request: NextRequest) {
     const monthStart = `${targetYear}-${String(targetMonth).padStart(2, "0")}-01`;
     const monthEnd = new Date(targetYear, targetMonth, 0).toISOString().split("T")[0];
 
-    // Fetch all players separately (no FK joins)
+    // Fetch all players
     const { data: players } = await supabase
       .from("players")
-      .select("id, name, position, jersey_number, age_group, status")
+      .select("*")
       .eq("academy_id", academyId)
       .eq("status", "active");
 
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
     // Fetch sessions this month
     const { data: sessions } = await supabase
       .from("sessions")
-      .select("id, date, type, duration_minutes, age_group, location")
+      .select("*")
       .eq("academy_id", academyId)
       .gte("date", monthStart)
       .lte("date", monthEnd)
@@ -54,59 +56,54 @@ export async function POST(request: NextRequest) {
 
     const sessionIds = (sessions ?? []).map((s) => s.id);
 
-    // Fetch wearable metrics for these sessions
-    const { data: metrics } = playerIds.length && sessionIds.length
-      ? await supabase
-          .from("wearable_metrics")
-          .select("player_id, session_id, hr_avg, hr_max, trimp_score, hr_recovery_60s, hr_zone_4_pct, hr_zone_5_pct")
-          .in("session_id", sessionIds)
-          .in("player_id", playerIds)
-      : { data: [] };
+    // Fetch all metrics
+    const [metricsRes, loadRes, cvRes, tacticalRes] = await Promise.all([
+      playerIds.length && sessionIds.length
+        ? supabase.from("wearable_metrics").select("*").in("session_id", sessionIds).in("player_id", playerIds)
+        : Promise.resolve({ data: [] }),
+      playerIds.length
+        ? supabase.from("load_records").select("*").in("player_id", playerIds).gte("date", monthStart).lte("date", monthEnd).order("date", { ascending: false })
+        : Promise.resolve({ data: [] }),
+      playerIds.length && sessionIds.length
+        ? supabase.from("cv_metrics").select("*").in("session_id", sessionIds).in("player_id", playerIds)
+        : Promise.resolve({ data: [] }),
+      sessionIds.length
+        ? supabase.from("tactical_metrics").select("*").in("session_id", sessionIds)
+        : Promise.resolve({ data: [] }),
+    ]);
 
-    // Fetch load records this month
-    const { data: loadRecords } = playerIds.length
-      ? await supabase
-          .from("load_records")
-          .select("player_id, date, acwr_ratio, risk_flag, daily_load, acute_load_7d, chronic_load_28d")
-          .in("player_id", playerIds)
-          .gte("date", monthStart)
-          .lte("date", monthEnd)
-          .order("date", { ascending: false })
-      : { data: [] };
+    const metricsArr = metricsRes.data ?? [];
+    const loadArr = loadRes.data ?? [];
+    const cvArr = cvRes.data ?? [];
 
-    // Fetch CV metrics for these sessions
-    const { data: cvMetrics } = playerIds.length && sessionIds.length
-      ? await supabase
-          .from("cv_metrics")
-          .select("player_id, session_id, total_distance_m, max_speed_kmh, sprint_count, avg_speed_kmh")
-          .in("session_id", sessionIds)
-          .in("player_id", playerIds)
-      : { data: [] };
+    // Build enriched squad context
+    const enrichedContext = enrichSquadContext(
+      players ?? [],
+      metricsArr,
+      cvArr,
+      loadArr,
+      sessions ?? [],
+      tacticalRes.data ?? []
+    );
 
-    // --- Compute stats ---
+    // --- Compute stats for response JSON ---
     const sessionCount = (sessions ?? []).length;
     const sessionTypeBreakdown = (sessions ?? []).reduce<Record<string, number>>((acc, s) => {
       acc[s.type] = (acc[s.type] ?? 0) + 1;
       return acc;
     }, {});
 
-    const metricsArr = metrics ?? [];
     const avgTrimp = metricsArr.length
       ? Math.round(metricsArr.reduce((s, m) => s + m.trimp_score, 0) / metricsArr.length)
       : 0;
     const avgHr = metricsArr.length
       ? Math.round(metricsArr.reduce((s, m) => s + m.hr_avg, 0) / metricsArr.length)
       : 0;
-
-    const cvArr = cvMetrics ?? [];
     const avgDistance = cvArr.length
       ? Math.round(cvArr.reduce((s, m) => s + m.total_distance_m, 0) / cvArr.length)
       : 0;
 
     // ACWR distribution
-    const loadArr = loadRecords ?? [];
-
-    // Get latest load record per player
     const latestLoadByPlayer: Record<string, typeof loadArr[0]> = {};
     for (const lr of loadArr) {
       if (!latestLoadByPlayer[lr.player_id]) {
@@ -138,30 +135,21 @@ export async function POST(request: NextRequest) {
       .sort((a, b) => b.avgTrimp - a.avgTrimp)
       .slice(0, 5);
 
-    // Build AI prompt
     const monthName = new Date(targetYear, targetMonth - 1).toLocaleString("en-GB", { month: "long" });
 
-    const prompt = `Generate a comprehensive Monthly Team Performance Report for ${monthName} ${targetYear}.
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.MONTHLY_REPORT}`;
 
-ACADEMY DATA:
+    // Additional month-specific stats for the prompt
+    const monthSpecificData = `
+MONTH: ${monthName} ${targetYear}
+Sessions: ${sessionCount} | Types: ${JSON.stringify(sessionTypeBreakdown)}
+Team Avg TRIMP: ${avgTrimp} | Avg HR: ${avgHr} bpm | Avg Distance: ${avgDistance}m
+Risk Status: Red ${riskCounts.red}, Amber ${riskCounts.amber}, Green ${riskCounts.green}, Blue ${riskCounts.blue}
 
-Sessions This Month: ${sessionCount}
-Session Breakdown: ${JSON.stringify(sessionTypeBreakdown)}
+Top 5 by Avg TRIMP:
+${topPerformers.map((p, i) => `${i + 1}. #${p.player.jersey_number} ${p.player.name} (${p.player.position}) — Avg TRIMP ${p.avgTrimp} over ${p.sessions} sessions`).join("\n")}
 
-Team Averages (from wearable data):
-- Average TRIMP Score: ${avgTrimp}
-- Average Heart Rate: ${avgHr} bpm
-- Average Distance (CV): ${avgDistance}m
-
-Risk Status (latest per player):
-- Red (danger >1.5 ACWR): ${riskCounts.red} players
-- Amber (caution 1.3-1.5 ACWR): ${riskCounts.amber} players
-- Green (optimal): ${riskCounts.green} players
-
-Top 5 Performers by Average TRIMP:
-${topPerformers.map((p, i) => `${i + 1}. #${p.player.jersey_number} ${p.player.name} (${p.player.position}) — Avg TRIMP: ${p.avgTrimp} over ${p.sessions} sessions`).join("\n")}
-
-Players At Risk (red/amber flags):
+Players At Risk:
 ${Object.values(latestLoadByPlayer)
   .filter((lr) => lr.risk_flag === "red" || lr.risk_flag === "amber")
   .map((lr) => {
@@ -169,35 +157,32 @@ ${Object.values(latestLoadByPlayer)
     return p ? `- #${p.jersey_number} ${p.name} (${lr.risk_flag.toUpperCase()}) ACWR: ${lr.acwr_ratio?.toFixed(2)}` : null;
   })
   .filter(Boolean)
-  .join("\n") || "None flagged this month"}
+  .join("\n") || "None flagged"}
 
-Write a professional monthly report with these sections (use ## headers):
+Amber/Red incidents this month: ${loadArr.filter(l => l.risk_flag === "amber" || l.risk_flag === "red").length} total records`;
 
-## Executive Summary
-3-4 sentences capturing the month's key performance themes, standout achievements, and primary concerns.
+    const prompt = `Generate a comprehensive Monthly Team Performance Report using the MONTHLY REPORT framework.
 
-## Performance Trends
-Analysis of training load, intensity distribution, and fitness indicators across the squad. Reference specific TRIMP and HR data.
+${enrichedContext}
 
-## Top 5 Performers
-For each of the top 5 players by TRIMP, write 2-3 sentences on their contribution and standout qualities.
+${monthSpecificData}
 
-## Injury & Load Report
-Detailed breakdown of at-risk players, their ACWR values, and recommended load adjustments.
+Follow the 8-section MONTHLY REPORT framework exactly:
+1. Executive Performance Summary (total volume, comparison to targets, month narrative)
+2. Load Management Audit (weekly TRIMP averages, monotony index, ACWR zone distribution)
+3. Fitness Indicators (HRR60 trends, Z4+Z5 distribution, top improvers, concern list)
+4. Positional Group Analysis (GK, DEF, MID, ATT — load comparison, overload detection)
+5. Injury/Risk Review (total incidents, patterns, chronic overload concerns)
+6. Tactical Development (session emphasis, pressing/possession/transition trends)
+7. Top Performers and Development Highlights (top 5, most improved, breakout potential)
+8. Recommendations for Next Month (5-7 specific, measurable, data-backed)
 
-## Tactical Evolution
-Based on session types and volume, comment on training emphasis and tactical development this month.
-
-## Recommendations
-5 specific, actionable recommendations for next month covering load management, player development, and squad health.
-
-Be precise, data-driven, and direct. Use player numbers and names throughout.`;
+Cite specific numbers throughout. Reference player names, jersey numbers, ACWR values, TRIMP scores, and HRR60 measurements.`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
-      system:
-        "You are Coach M8 AI, an elite football performance analyst. Generate professional, data-driven team performance reports. Be precise, cite specific data, and give actionable recommendations.",
+      max_tokens: 3000,
+      system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
 

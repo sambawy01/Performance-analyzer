@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { buildFullContext } from "@/lib/ai/build-context";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichSquadContext } from "@/lib/ai/enrich-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -29,14 +30,33 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (!profile) {
-      return NextResponse.json(
-        { error: "Profile not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Profile not found" }, { status: 404 });
     }
 
-    // Build full context
-    const fullContext = await buildFullContext(profile.academy_id);
+    // Fetch full squad data for enriched context
+    const [playersRes, metricsRes, cvRes, loadRes, sessionsRes, tacticalRes] = await Promise.all([
+      supabase.from("players").select("*").eq("academy_id", profile.academy_id).eq("status", "active"),
+      supabase.from("wearable_metrics").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("cv_metrics").select("*").order("created_at", { ascending: false }).limit(500),
+      supabase.from("load_records").select("*").order("date", { ascending: false }).limit(500),
+      supabase.from("sessions").select("*").eq("academy_id", profile.academy_id).order("date", { ascending: false }).limit(20),
+      supabase.from("tactical_metrics").select("*").limit(20),
+    ]);
+
+    const players = playersRes.data ?? [];
+    const playerIds = players.map(p => p.id);
+    const allMetrics = (metricsRes.data ?? []).filter((m: any) => playerIds.includes(m.player_id));
+    const allCvMetrics = (cvRes.data ?? []).filter((m: any) => playerIds.includes(m.player_id));
+    const allLoadRecords = (loadRes.data ?? []).filter((l: any) => playerIds.includes(l.player_id));
+
+    const enrichedContext = enrichSquadContext(
+      players,
+      allMetrics,
+      allCvMetrics,
+      allLoadRecords,
+      sessionsRes.data ?? [],
+      tacticalRes.data ?? []
+    );
 
     // Build the 7 dates for the week
     const startDate = new Date(weekStart + "T00:00:00");
@@ -50,27 +70,26 @@ export async function POST(request: NextRequest) {
     const matchInfo =
       matchSchedule && matchSchedule.length > 0
         ? matchSchedule
-            .map(
-              (m: { date: string; opponent: string }) =>
-                `Match on ${m.date} vs ${m.opponent}`
-            )
+            .map((m: { date: string; opponent: string }) => `Match on ${m.date} vs ${m.opponent}`)
             .join("; ")
         : "No matches scheduled this week";
 
-    const prompt = `You are an elite football performance analyst. Generate an optimal 7-day training plan for this academy.
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.WEEKLY_PLAN}\n\nYou respond ONLY with valid JSON. No markdown, no explanation, no code blocks.`;
+
+    const prompt = `Generate an optimal 7-day microcycle training plan using the WEEKLY PLAN periodization framework.
 
 WEEK: ${weekDates[0]} (Monday) to ${weekDates[6]} (Sunday)
 MATCH SCHEDULE: ${matchInfo}
 
-${fullContext}
+${enrichedContext}
 
-Generate a training plan as a JSON object. Consider:
-1. ACWR management - players in red/amber need reduced load
-2. Match preparation - taper intensity before match days
-3. Recovery after matches
-4. Progressive overload principles for youth development
-5. At least 1 rest day per week
-6. Tactical focus areas based on recent session analysis
+Apply the microcycle design principles:
+1. Weekly TRIMP target: 500-700 for U14-U16
+2. Never 2 consecutive high-intensity days
+3. Proper taper if match is scheduled (MD-3 last high session, MD-2 medium, MD-1 activation only)
+4. At least 1 full rest day
+5. ACWR management: flag specific players with >1.3 for rest/modification on specific days
+6. Load monitoring checkpoints on Monday AM, Wednesday PM, Friday AM
 
 Respond ONLY with a valid JSON object in this exact format:
 {
@@ -83,38 +102,42 @@ Respond ONLY with a valid JSON object in this exact format:
       "location": "October",
       "time": "4:00 PM",
       "focus": "Pressing triggers and defensive shape",
-      "restPlayers": [{"jerseyNumber": 8, "name": "Player Name", "reason": "ACWR 1.52"}],
-      "notes": "Focus on compact defensive block",
+      "expectedTrimp": "80-120",
+      "targetZones": "Z2-Z3 dominant, 15-20% Z4",
+      "restPlayers": [{"jerseyNumber": 8, "name": "Player Name", "reason": "ACWR 1.52 — Phase 4 Danger, recovery only"}],
+      "modifiedPlayers": [{"jerseyNumber": 5, "name": "Player Name", "modification": "Cap at 60 min, no Z5 work, ACWR 1.35"}],
+      "notes": "Focus on compact defensive block. MD-4 session in microcycle.",
       "availablePlayers": 19,
       "predictedReadiness": 78
     }
   ],
-  "summary": "Brief overview of the week plan",
+  "summary": "Overview citing specific TRIMP targets, ACWR management decisions, and periodization rationale",
   "totalLoad": 450,
   "sessionsPlanned": 5,
-  "playersNeedingRest": [{"jerseyNumber": 8, "name": "Player Name", "reason": "High ACWR"}],
+  "weeklyTrimpTarget": "500-700",
+  "playersNeedingRest": [{"jerseyNumber": 8, "name": "Player Name", "reason": "ACWR 1.52 — must drop below 1.3 before full training. Rest Mon-Wed, reassess Thu."}],
   "predictedEndOfWeekACWR": 1.15,
-  "aiCommentary": "Detailed analysis of why this plan optimizes performance while managing load"
+  "loadCheckpoints": ["Monday AM: review weekend load, update ACWR", "Wednesday PM: mid-week check, adjust Thursday if needed", "Friday AM: final readiness assessment"],
+  "aiCommentary": "Detailed periodization analysis citing Banister model, ACWR trajectory projections, and youth-specific load management"
 }
 
-Rules for the JSON:
+Rules:
 - "type" must be one of: "training", "match", "recovery", "rest"
 - "intensity" must be one of: "high", "medium", "low", "recovery", "match"
 - Each day in the week (${weekDates.join(", ")}) MUST be included
-- Rest days should have type "rest", intensity "recovery", duration 0
-- Match days should have type "match", intensity "match"
+- Rest days: type "rest", intensity "recovery", duration 0
+- Match days: type "match", intensity "match"
 - Location options: "October", "New Cairo", "Maadi", "HQ"
-- Use REAL player names and jersey numbers from the data
-- predictedReadiness is 0-100 based on team load state
-- totalLoad is sum of session durations weighted by intensity
+- Use REAL player names and jersey numbers
+- predictedReadiness is 0-100
+- Reference specific ACWR values and Gabbett thresholds in reasons
 
 Return ONLY the JSON, no markdown, no explanation.`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
-      system:
-        "You are a sports science AI. You respond ONLY with valid JSON. No markdown, no explanation, no code blocks.",
+      max_tokens: 2500,
+      system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -123,30 +146,20 @@ Return ONLY the JSON, no markdown, no explanation.`;
       | undefined;
 
     if (!textBlock) {
-      return NextResponse.json(
-        { error: "No response from AI" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "No response from AI" }, { status: 500 });
     }
 
-    // Parse JSON from the response — strip any markdown fences if present
     let jsonText = textBlock.text.trim();
     if (jsonText.startsWith("```")) {
-      jsonText = jsonText
-        .replace(/^```(?:json)?\n?/, "")
-        .replace(/\n?```$/, "");
+      jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     }
 
     const plan = JSON.parse(jsonText);
-
     return NextResponse.json(plan);
   } catch (error) {
     console.error("AI plan-week error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error ? error.message : "Failed to generate plan",
-      },
+      { error: error instanceof Error ? error.message : "Failed to generate plan" },
       { status: 500 }
     );
   }

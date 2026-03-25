@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichPlayerContext } from "@/lib/ai/enrich-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -25,19 +27,19 @@ function computeInjuryRisk(
   let acwrDetail = "";
   if (latestAcwr > 1.5) {
     acwrScore = 30;
-    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — critically above safe zone (1.0-1.3)`;
+    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — critically above safe zone (0.8-1.3). Gabbett 2016: 4-5x injury risk at this level.`;
   } else if (latestAcwr > 1.3) {
     acwrScore = 20;
-    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — above optimal range, entering caution zone`;
+    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — above optimal range, entering caution zone (1.3-1.5). 2-4x baseline injury risk.`;
   } else if (latestAcwr >= 0.8) {
     acwrScore = 5;
-    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — within optimal training zone`;
+    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — within optimal training zone (0.8-1.3, Gabbett sweet spot)`;
   } else if (latestAcwr >= 0.5) {
     acwrScore = 15;
-    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — under-training risk, detraining possible`;
+    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — under-training risk. Chronic load is low, making the player vulnerable to load spikes.`;
   } else {
     acwrScore = 10;
-    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — very low load, returning from break?`;
+    acwrDetail = `ACWR at ${latestAcwr.toFixed(2)} — very low load, likely returning from extended break`;
   }
   factors.push({
     factor: "ACWR Deviation",
@@ -49,8 +51,8 @@ function computeInjuryRisk(
 
   // 2. Declining HR recovery trend
   const recoveryVals = wearableMetrics
-    .filter((m) => m.hr_recovery_60s !== null)
-    .map((m) => m.hr_recovery_60s as number)
+    .filter((m: any) => m.hr_recovery_60s !== null)
+    .map((m: any) => m.hr_recovery_60s as number)
     .slice(0, 10);
   let recoveryScore = 0;
   let recoveryDetail = "Insufficient recovery data";
@@ -60,16 +62,16 @@ function computeInjuryRisk(
     const decline = olderRec - recentRec;
     if (decline > 8) {
       recoveryScore = 25;
-      recoveryDetail = `Recovery declined by ${decline.toFixed(0)} bpm — significant cardiac fatigue marker`;
+      recoveryDetail = `HRR60 declined by ${decline.toFixed(0)} bpm (recent avg ${recentRec.toFixed(0)} vs older avg ${olderRec.toFixed(0)}) — significant parasympathetic fatigue marker (Ferguson-Ball model)`;
     } else if (decline > 4) {
       recoveryScore = 15;
-      recoveryDetail = `Recovery declined by ${decline.toFixed(0)} bpm — moderate fatigue accumulation`;
+      recoveryDetail = `HRR60 declined by ${decline.toFixed(0)} bpm — moderate fatigue accumulation. Non-functional overreaching risk if trend continues.`;
     } else if (decline > 0) {
       recoveryScore = 5;
-      recoveryDetail = `Recovery slightly lower by ${decline.toFixed(0)} bpm — within normal variation`;
+      recoveryDetail = `HRR60 slightly lower by ${decline.toFixed(0)} bpm — within normal variation`;
     } else {
       recoveryScore = 0;
-      recoveryDetail = `Recovery improving by ${Math.abs(decline).toFixed(0)} bpm — positive adaptation sign`;
+      recoveryDetail = `HRR60 improving by ${Math.abs(decline).toFixed(0)} bpm — positive autonomic adaptation`;
     }
   }
   factors.push({
@@ -80,7 +82,7 @@ function computeInjuryRisk(
     detail: recoveryDetail,
   });
 
-  // 3. High cumulative load (last 7 days vs chronic baseline)
+  // 3. High cumulative load
   const recentLoads = loadHistory.slice(0, 7);
   let cumulativeScore = 0;
   let cumulativeDetail = "Insufficient load data";
@@ -88,17 +90,16 @@ function computeInjuryRisk(
     const acuteLoad = recentLoads[0]?.acute_load_7d ?? 0;
     const chronicLoad = recentLoads[0]?.chronic_load_28d ?? 1;
     const loadRatio = chronicLoad > 0 ? acuteLoad / chronicLoad : 1;
-    // Also check absolute TRIMP accumulation
     const totalTrimp = wearableMetrics.slice(0, 7).reduce((s: number, m: any) => s + (m.trimp_score ?? 0), 0);
     if (totalTrimp > 900 || loadRatio > 1.5) {
       cumulativeScore = 25;
-      cumulativeDetail = `Weekly TRIMP ${totalTrimp.toFixed(0)}, load ratio ${loadRatio.toFixed(2)} — excessive cumulative load`;
+      cumulativeDetail = `Weekly TRIMP ${totalTrimp.toFixed(0)}, load ratio ${loadRatio.toFixed(2)} — excessive cumulative load. Above 750 TRIMP/week threshold for U14-U16.`;
     } else if (totalTrimp > 650 || loadRatio > 1.3) {
       cumulativeScore = 15;
-      cumulativeDetail = `Weekly TRIMP ${totalTrimp.toFixed(0)}, load ratio ${loadRatio.toFixed(2)} — elevated accumulation`;
+      cumulativeDetail = `Weekly TRIMP ${totalTrimp.toFixed(0)}, load ratio ${loadRatio.toFixed(2)} — elevated accumulation, approaching weekly ceiling`;
     } else {
       cumulativeScore = 5;
-      cumulativeDetail = `Weekly TRIMP ${totalTrimp.toFixed(0)} — load well managed`;
+      cumulativeDetail = `Weekly TRIMP ${totalTrimp.toFixed(0)} — load well managed within youth weekly target (400-750)`;
     }
   }
   factors.push({
@@ -109,7 +110,7 @@ function computeInjuryRisk(
     detail: cumulativeDetail,
   });
 
-  // 4. High intensity ratio (zone 4+5 percentage, sprint demands)
+  // 4. High intensity ratio
   const highIntensityPcts = wearableMetrics.slice(0, 5).map((m: any) => {
     const z4 = m.hr_zone_4_pct ?? 0;
     const z5 = m.hr_zone_5_pct ?? 0;
@@ -123,13 +124,13 @@ function computeInjuryRisk(
     const avgSprints = sprintCounts.length > 0 ? sprintCounts.reduce((s: number, v: number) => s + v, 0) / sprintCounts.length : 0;
     if (avgHighPct > 35 || avgSprints > 20) {
       intensityScore = 20;
-      intensityDetail = `Avg ${avgHighPct.toFixed(0)}% in Z4+Z5, ${avgSprints.toFixed(0)} sprints/session — very high intensity`;
+      intensityDetail = `Avg ${avgHighPct.toFixed(0)}% in Z4+Z5, ${avgSprints.toFixed(0)} sprints/session — exceeds 25% safe ceiling for youth. Neuromuscular fatigue risk.`;
     } else if (avgHighPct > 25 || avgSprints > 14) {
       intensityScore = 12;
-      intensityDetail = `Avg ${avgHighPct.toFixed(0)}% in Z4+Z5, ${avgSprints.toFixed(0)} sprints/session — moderate-high intensity`;
+      intensityDetail = `Avg ${avgHighPct.toFixed(0)}% in Z4+Z5, ${avgSprints.toFixed(0)} sprints/session — approaching upper limit of safe high-intensity exposure`;
     } else {
       intensityScore = 3;
-      intensityDetail = `Avg ${avgHighPct.toFixed(0)}% in Z4+Z5 — appropriate intensity distribution`;
+      intensityDetail = `Avg ${avgHighPct.toFixed(0)}% in Z4+Z5 — within safe high-intensity distribution (target 15-25%)`;
     }
   }
   factors.push({
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
     // Fetch player — filtered by academy_id
     const { data: player } = await supabase
       .from("players")
-      .select("id, name, position, age_group, jersey_number")
+      .select("*")
       .eq("id", player_id)
       .eq("academy_id", profile.academy_id)
       .single();
@@ -187,61 +188,72 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
-    // Fetch load history
-    const { data: loadHistory } = await supabase
-      .from("load_records")
-      .select("*")
-      .eq("player_id", player_id)
-      .order("date", { ascending: false })
-      .limit(30);
+    // Fetch load history, wearable metrics, CV metrics
+    const [loadRes, wearableRes, cvRes] = await Promise.all([
+      supabase.from("load_records").select("*").eq("player_id", player_id).order("date", { ascending: false }).limit(30),
+      supabase.from("wearable_metrics").select("*").eq("player_id", player_id).order("created_at", { ascending: false }).limit(15),
+      supabase.from("cv_metrics").select("*").eq("player_id", player_id).order("created_at", { ascending: false }).limit(10),
+    ]);
 
-    // Fetch wearable metrics
-    const { data: wearableMetrics } = await supabase
-      .from("wearable_metrics")
-      .select("trimp_score, hr_recovery_60s, hr_zone_4_pct, hr_zone_5_pct, hr_avg, hr_max, created_at")
-      .eq("player_id", player_id)
-      .order("created_at", { ascending: false })
-      .limit(15);
+    const loadHistory = loadRes.data ?? [];
+    const wearableMetrics = wearableRes.data ?? [];
+    const cvMetrics = cvRes.data ?? [];
 
-    // Fetch CV metrics
-    const { data: cvMetrics } = await supabase
-      .from("cv_metrics")
-      .select("sprint_count, max_speed_kmh, high_speed_run_count, accel_events, decel_events")
-      .eq("player_id", player_id)
-      .order("created_at", { ascending: false })
-      .limit(10);
+    const { riskPercentage, factors, severity } = computeInjuryRisk(loadHistory, wearableMetrics, cvMetrics);
 
-    const { riskPercentage, factors, severity } = computeInjuryRisk(
-      loadHistory ?? [],
-      wearableMetrics ?? [],
-      cvMetrics ?? []
+    // Fetch squad data for percentile context
+    const { data: allPlayers } = await supabase
+      .from("players")
+      .select("id")
+      .eq("academy_id", profile.academy_id)
+      .eq("status", "active");
+    const allPlayerIds = (allPlayers ?? []).map(p => p.id);
+
+    const [squadMetricsRes, squadCvRes, squadLoadRes] = await Promise.all([
+      allPlayerIds.length > 0
+        ? supabase.from("wearable_metrics").select("*").in("player_id", allPlayerIds).order("created_at", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+      allPlayerIds.length > 0
+        ? supabase.from("cv_metrics").select("*").in("player_id", allPlayerIds).order("created_at", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+      allPlayerIds.length > 0
+        ? supabase.from("load_records").select("*").in("player_id", allPlayerIds).order("date", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    // Build enriched context
+    const enrichedContext = enrichPlayerContext(
+      player,
+      wearableMetrics,
+      cvMetrics,
+      loadHistory,
+      squadMetricsRes.data ?? [],
+      squadCvRes.data ?? [],
+      squadLoadRes.data ?? []
     );
 
-    // Generate AI recommendation
     const factorsSummary = factors.map((f) => `${f.factor}: ${f.score}/${f.maxScore} (${f.severity}) — ${f.detail}`).join("\n");
 
+    // Generate AI recommendation with expert prompt
     let aiRecommendation = "";
     try {
+      const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.INJURY_PREVENTION}`;
+
       const response = await anthropic.messages.create({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 300,
-        system: "You are Coach M8 AI, an elite football performance analyst. Give a concise 2-3 sentence injury risk recommendation based on the data. Be specific and actionable. Cite numbers.",
+        max_tokens: 600,
+        system: systemPrompt,
         messages: [
           {
             role: "user",
-            content: `Player: ${player.name} (#${player.jersey_number}, ${player.position}, ${player.age_group})
-Risk Score: ${riskPercentage}/100 (${severity})
-Risk Factors:
-${factorsSummary}
-
-What should the coaching staff do?`,
+            content: `Analyze the injury risk for this player and provide a specific load prescription:\n\n${enrichedContext}\n\nCOMPUTED RISK ASSESSMENT:\nRisk Score: ${riskPercentage}/100 (${severity})\nRisk Factors:\n${factorsSummary}\n\nProvide: (1) 2-3 sentence risk summary citing specific numbers, (2) specific load prescription for the next 7 days, (3) return-to-play criteria if player is in amber/red zone. Categorize each risk factor as MODIFIABLE or NON-MODIFIABLE.`,
           },
         ],
       });
       const textBlock = response.content.find((b) => b.type === "text") as { type: "text"; text: string } | undefined;
       aiRecommendation = textBlock?.text ?? "";
     } catch (e) {
-      aiRecommendation = `Risk score is ${riskPercentage}/100. ${severity === "red" ? "Reduce training load immediately." : severity === "amber" ? "Monitor closely and consider load reduction." : "Continue current training plan."}`;
+      aiRecommendation = `Risk score is ${riskPercentage}/100. ${severity === "red" ? "Reduce training load immediately. ACWR must drop below 1.3 before return to full training." : severity === "amber" ? "Monitor closely. Cap session intensity at Z3, limit to 60 minutes." : "Continue current training plan with standard monitoring."}`;
     }
 
     return NextResponse.json({

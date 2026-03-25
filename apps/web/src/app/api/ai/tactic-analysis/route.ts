@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -9,16 +10,10 @@ export async function POST(request: NextRequest) {
     const { formation, players, opponentFormation } = await request.json();
 
     if (!formation || typeof formation !== "string") {
-      return NextResponse.json(
-        { error: "formation is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "formation is required" }, { status: 400 });
     }
     if (!players || !Array.isArray(players)) {
-      return NextResponse.json(
-        { error: "players array is required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "players array is required" }, { status: 400 });
     }
 
     // Auth check
@@ -52,7 +47,9 @@ export async function POST(request: NextRequest) {
       )
       .join("\n");
 
-    const prompt = `Analyze this football formation and provide tactical feedback.
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.TACTICAL_ANALYSIS}`;
+
+    const prompt = `Analyze this football formation using the 4 phases of play framework (Juego de Posicion):
 
 FORMATION: ${formation}
 ${opponentFormation ? `OPPONENT FORMATION: ${opponentFormation}` : ""}
@@ -60,45 +57,54 @@ ${opponentFormation ? `OPPONENT FORMATION: ${opponentFormation}` : ""}
 PLAYERS IN POSITION:
 ${playerLines}
 
+Apply the TACTICAL ANALYSIS framework:
+1. In Possession: positional structure, build-up patterns, width/depth
+2. Out of Possession: pressing intensity, defensive shape, compactness
+3. Negative Transition: counter-pressing approach, vulnerability windows
+4. Positive Transition: break speed, who makes the runs
+
+For each player, calculate a Formation Fit Score (0-100) using:
+- Natural position match (+40 primary, +25 secondary, +10 unfamiliar)
+- Physical profile match (sprint data for wingers, endurance for CMs, etc.)
+- Current fitness (ACWR and recovery data)
+- Recent form (TRIMP vs baseline)
+
 Return a JSON object (no markdown wrapping, just raw JSON) with this EXACT structure:
 {
-  "strengths": ["strength 1", "strength 2", ...],
-  "vulnerabilities": ["vulnerability 1", ...],
+  "inPossession": "2-3 sentences analyzing build-up play and positional structure with these specific players",
+  "outOfPossession": "2-3 sentences on defensive shape, pressing triggers, and compactness",
+  "transitions": "2-3 sentences on both positive and negative transitions",
+  "strengths": ["strength 1 with specific player references and data", "strength 2", ...],
+  "vulnerabilities": ["vulnerability 1 referencing specific positional gaps", ...],
   "playerFitScores": [
-    {"name": "Player Name", "position": "POS", "score": 85, "note": "Brief reason"}
+    {"name": "Player Name", "position": "POS", "score": 85, "note": "Natural CM, ACWR 1.05 (green), highest distance in squad at 6800m. Strong positional fit."}
   ],
-  "adjustments": ["suggestion 1", ...],
-  "counterFormations": ["4-4-2 would exploit the wide spaces because...", ...],
-  "summary": "One paragraph overall tactical assessment"
+  "adjustments": ["suggestion 1 with tactical reasoning", ...],
+  "counterFormations": ["4-4-2 would exploit the half-spaces because...", ...],
+  "summary": "One paragraph overall tactical assessment referencing both tactical principles and player fitness data"
 }
 
 Rules:
-- strengths: 3-5 tactical strengths of this formation with these specific players
-- vulnerabilities: 2-4 exposed zones or tactical weaknesses, referencing specific positions
-- playerFitScores: for each of the 11 players, a score 0-100 of how well they fit that specific role considering their natural position, fitness (ACWR, TRIMP, recovery data), and physical profile. Flag any player with red/amber risk who shouldn't be playing at full intensity
-- adjustments: 2-4 specific changes the coach could make (position swaps, role tweaks, player substitutions)
-- counterFormations: 2-3 formations opponents might use against this setup and why they'd be effective
-- summary: concise overall assessment in 2-3 sentences
-
-Be specific. Reference actual player names, numbers, and data. If a player has a high ACWR or red risk flag, flag it prominently in the analysis.`;
+- strengths: 3-5 tactical strengths referencing specific players, their data, and positional play principles
+- vulnerabilities: 2-4 exposed zones, referencing specific positions and player limitations
+- playerFitScores: for EACH of the 11 players. Flag any player with amber/red ACWR prominently.
+- adjustments: 2-4 specific changes with tactical reasoning
+- counterFormations: 2-3 with explanations
+- summary: concise, data-backed, 2-3 sentences`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
-      system:
-        "You are Coach M8 AI, an elite football tactical analyst for youth academy football. You analyze formations, player fitness data, and tactical matchups. Be specific, data-driven, and practical. Always consider youth development alongside winning.",
+      max_tokens: 2500,
+      system: systemPrompt,
       messages: [{ role: "user", content: prompt }],
     });
 
     const textBlock = response.content.find((b) => b.type === "text");
     const rawText = textBlock?.text ?? "{}";
 
-    // Parse JSON (handle potential markdown wrapping)
     let jsonStr = rawText.trim();
     if (jsonStr.startsWith("```")) {
-      jsonStr = jsonStr
-        .replace(/^```(?:json)?\n?/, "")
-        .replace(/\n?```$/, "");
+      jsonStr = jsonStr.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     }
 
     const analysis = JSON.parse(jsonStr);
@@ -107,6 +113,15 @@ Be specific. Reference actual player names, numbers, and data. If a player has a
     const markdown = [
       `## Tactical Analysis: ${formation}`,
       opponentFormation ? `**vs ${opponentFormation}**\n` : "",
+      "### In Possession",
+      analysis.inPossession ?? "",
+      "",
+      "### Out of Possession",
+      analysis.outOfPossession ?? "",
+      "",
+      "### Transitions",
+      analysis.transitions ?? "",
+      "",
       "### Strengths",
       ...(analysis.strengths ?? []).map((s: string) => `- ${s}`),
       "",
@@ -132,12 +147,7 @@ Be specific. Reference actual player names, numbers, and data. If a player has a
   } catch (error) {
     console.error("Tactic analysis error:", error);
     return NextResponse.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Tactical analysis failed",
-      },
+      { error: error instanceof Error ? error.message : "Tactical analysis failed" },
       { status: 500 }
     );
   }

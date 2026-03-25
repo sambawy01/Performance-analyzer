@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { generatePlayerDevelopmentSummary } from "@/lib/ai/claude";
+import Anthropic from "@anthropic-ai/sdk";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichPlayerContext } from "@/lib/ai/enrich-context";
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,65 +44,91 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Player not found" }, { status: 404 });
     }
 
-    const age = player.dob
-      ? Math.floor((Date.now() - new Date(player.dob).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-      : null;
-
-    // Get recent wearable metrics (NO FK JOINS)
+    // Fetch player wearable metrics
     const { data: metrics } = await supabase
       .from("wearable_metrics")
-      .select("session_id, hr_avg, hr_max, trimp_score, hr_zone_1_pct, hr_zone_2_pct, hr_zone_3_pct, hr_zone_4_pct, hr_zone_5_pct, hr_recovery_60s, created_at")
+      .select("*")
       .eq("player_id", playerId)
       .order("created_at", { ascending: false })
-      .limit(15);
+      .limit(20);
 
-    // Fetch session details separately
-    const sessionIds = [...new Set((metrics ?? []).map((m) => m.session_id))];
-    const { data: sessions } = sessionIds.length > 0
-      ? await supabase.from("sessions").select("id, date, type").in("id", sessionIds).eq("academy_id", profile.academy_id)
-      : { data: [] };
-    const sessionMap = new Map((sessions ?? []).map((s) => [s.id, s]));
+    // Fetch player CV metrics
+    const { data: cvMetrics } = await supabase
+      .from("cv_metrics")
+      .select("*")
+      .eq("player_id", playerId)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
-    // Get load history
+    // Fetch load history
     const { data: loadHistory } = await supabase
       .from("load_records")
       .select("*")
       .eq("player_id", playerId)
       .order("date", { ascending: false })
-      .limit(15);
+      .limit(30);
 
-    const sessionsData = (metrics ?? []).map((m: any) => {
-      const s = sessionMap.get(m.session_id);
-      return {
-        date: s?.date ?? "",
-        type: s?.type ?? "",
-        hr_avg: m.hr_avg,
-        hr_max: m.hr_max,
-        trimp_score: m.trimp_score,
-        hr_zone_1_pct: m.hr_zone_1_pct,
-        hr_zone_2_pct: m.hr_zone_2_pct,
-        hr_zone_3_pct: m.hr_zone_3_pct,
-        hr_zone_4_pct: m.hr_zone_4_pct,
-        hr_zone_5_pct: m.hr_zone_5_pct,
-        hr_recovery_60s: m.hr_recovery_60s,
-      };
+    // Fetch all squad metrics for percentile calculations
+    const { data: allPlayers } = await supabase
+      .from("players")
+      .select("id, name, position, age_group")
+      .eq("academy_id", profile.academy_id)
+      .eq("status", "active");
+
+    const allPlayerIds = (allPlayers ?? []).map(p => p.id);
+
+    const [squadMetricsRes, squadCvRes, squadLoadRes] = await Promise.all([
+      allPlayerIds.length > 0
+        ? supabase.from("wearable_metrics").select("*").in("player_id", allPlayerIds).order("created_at", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+      allPlayerIds.length > 0
+        ? supabase.from("cv_metrics").select("*").in("player_id", allPlayerIds).order("created_at", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+      allPlayerIds.length > 0
+        ? supabase.from("load_records").select("*").in("player_id", allPlayerIds).order("date", { ascending: false }).limit(500)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    // Build enriched context
+    const enrichedContext = enrichPlayerContext(
+      player,
+      metrics ?? [],
+      cvMetrics ?? [],
+      loadHistory ?? [],
+      squadMetricsRes.data ?? [],
+      squadCvRes.data ?? [],
+      squadLoadRes.data ?? []
+    );
+
+    // Fetch session details for context
+    const sessionIds = [...new Set((metrics ?? []).map((m: any) => m.session_id))];
+    const { data: sessions } = sessionIds.length > 0
+      ? await supabase.from("sessions").select("id, date, type").in("id", sessionIds).eq("academy_id", profile.academy_id)
+      : { data: [] };
+    const sessionMap = new Map((sessions ?? []).map((s: any) => [s.id, s]));
+
+    let sessionHistory = "";
+    if (metrics && metrics.length > 0) {
+      sessionHistory = "\n\nSESSION-BY-SESSION DATA:\n";
+      for (const m of metrics) {
+        const s = sessionMap.get(m.session_id);
+        sessionHistory += `${s?.date ?? "?"} | ${s?.type ?? "?"} | TRIMP ${Math.round(m.trimp_score)}, HR ${m.hr_avg}/${m.hr_max}, Z4+Z5 ${Math.round(m.hr_zone_4_pct + m.hr_zone_5_pct)}%`;
+        if (m.hr_recovery_60s) sessionHistory += `, HRR60 ${m.hr_recovery_60s}`;
+        sessionHistory += "\n";
+      }
+    }
+
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.PLAYER_DEVELOPMENT}`;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: `Generate a comprehensive player development report:\n\n${enrichedContext}${sessionHistory}\n\nFollow the PLAYER DEVELOPMENT output format exactly. Use the 4-Corner Model. Project development trajectory. Set 3 measurable 4-week goals.` }],
     });
 
-    const summary = await generatePlayerDevelopmentSummary({
-      name: player.name,
-      position: player.position,
-      ageGroup: player.age_group,
-      age: age ?? 0,
-      sessionsData,
-      loadHistory: (loadHistory ?? []).map((l: any) => ({
-        date: l.date,
-        daily_load: l.daily_load,
-        acwr_ratio: l.acwr_ratio,
-        risk_flag: l.risk_flag,
-      })),
-    });
-
-    return NextResponse.json({ summary });
+    const textBlock = response.content.find(b => b.type === "text");
+    return NextResponse.json({ summary: (textBlock as any)?.text ?? "Unable to generate summary." });
   } catch (error) {
     console.error("Player summary error:", error);
     return NextResponse.json(

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-import { generateSessionSummary } from "@/lib/ai/claude";
+import Anthropic from "@anthropic-ai/sdk";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichSessionContext } from "@/lib/ai/enrich-context";
+
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 export async function POST(request: NextRequest) {
   try {
@@ -40,59 +44,92 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Get wearable metrics (NO FK JOINS)
-    const { data: metrics } = await supabase
-      .from("wearable_metrics")
-      .select("*")
-      .eq("session_id", sessionId);
+    // Fetch session data
+    const [metricsRes, cvRes, loadRes, tacticalRes] = await Promise.all([
+      supabase.from("wearable_metrics").select("*").eq("session_id", sessionId),
+      supabase.from("cv_metrics").select("*").eq("session_id", sessionId),
+      supabase.from("load_records").select("*").eq("session_id", sessionId),
+      supabase.from("tactical_metrics").select("*").eq("session_id", sessionId).maybeSingle(),
+    ]);
 
-    // Fetch player names separately
-    const playerIds = [...new Set((metrics ?? []).map((m: any) => m.player_id))];
+    const metrics = metricsRes.data ?? [];
+    const cvMetrics = cvRes.data ?? [];
+    const loadRecords = loadRes.data ?? [];
+
+    // Fetch player names separately (NO FK JOINS)
+    const playerIds = [...new Set([
+      ...metrics.map((m: any) => m.player_id),
+      ...loadRecords.map((l: any) => l.player_id),
+    ])];
     const { data: players } = playerIds.length > 0
-      ? await supabase.from("players").select("id, name, position").in("id", playerIds).eq("academy_id", profile.academy_id)
+      ? await supabase.from("players").select("id, name, position, jersey_number").in("id", playerIds).eq("academy_id", profile.academy_id)
       : { data: [] };
     const playerMap = new Map((players ?? []).map((p: any) => [p.id, p]));
 
-    // Get load alerts
-    const { data: loadRecords } = await supabase
-      .from("load_records")
-      .select("*")
-      .eq("session_id", sessionId)
-      .in("risk_flag", ["amber", "red"]);
+    // Fetch recent session averages for comparison
+    const { data: recentSessions } = await supabase
+      .from("sessions")
+      .select("id")
+      .eq("academy_id", profile.academy_id)
+      .lt("date", session.date)
+      .order("date", { ascending: false })
+      .limit(5);
 
-    const summary = await generateSessionSummary({
-      date: session.date,
-      type: session.type,
-      ageGroup: session.age_group,
-      location: session.location,
-      duration: session.duration_minutes,
-      notes: session.notes,
-      playerMetrics: (metrics ?? []).map((m: any) => {
-        const p = playerMap.get(m.player_id);
-        return {
-          name: p?.name ?? "Unknown",
-          position: p?.position ?? "",
-          hr_avg: m.hr_avg,
-          hr_max: m.hr_max,
-          trimp_score: m.trimp_score,
-          hr_zone_1_pct: m.hr_zone_1_pct,
-          hr_zone_2_pct: m.hr_zone_2_pct,
-          hr_zone_3_pct: m.hr_zone_3_pct,
-          hr_zone_4_pct: m.hr_zone_4_pct,
-          hr_zone_5_pct: m.hr_zone_5_pct,
+    let recentSessionAverages: { avgTrimp: number; avgHr: number; avgZ45: number; count: number } | null = null;
+    if (recentSessions && recentSessions.length > 0) {
+      const recentIds = recentSessions.map((s: any) => s.id);
+      const { data: recentMetrics } = await supabase
+        .from("wearable_metrics")
+        .select("trimp_score, hr_avg, hr_zone_4_pct, hr_zone_5_pct")
+        .in("session_id", recentIds);
+      if (recentMetrics && recentMetrics.length > 0) {
+        recentSessionAverages = {
+          avgTrimp: Math.round(recentMetrics.reduce((s: number, m: any) => s + m.trimp_score, 0) / recentMetrics.length),
+          avgHr: Math.round(recentMetrics.reduce((s: number, m: any) => s + m.hr_avg, 0) / recentMetrics.length),
+          avgZ45: Math.round(recentMetrics.reduce((s: number, m: any) => s + m.hr_zone_4_pct + m.hr_zone_5_pct, 0) / recentMetrics.length),
+          count: recentSessions.length,
         };
-      }),
-      loadAlerts: (loadRecords ?? []).map((l: any) => {
-        const p = playerMap.get(l.player_id);
-        return {
-          name: p?.name ?? "Unknown",
-          acwr_ratio: l.acwr_ratio,
-          risk_flag: l.risk_flag,
-        };
-      }),
+      }
+    }
+
+    // Build enriched context
+    const enrichedPlayerMetrics = metrics.map((m: any) => {
+      const p = playerMap.get(m.player_id);
+      return { ...m, name: p?.name ?? "Unknown", position: p?.position ?? "", jersey_number: p?.jersey_number ?? 0 };
+    });
+    const enrichedCvMetrics = cvMetrics.map((m: any) => {
+      const p = playerMap.get(m.player_id);
+      return { ...m, name: p?.name ?? "Unknown", position: p?.position ?? "", jersey_number: p?.jersey_number ?? 0 };
+    });
+    const enrichedLoadRecords = loadRecords.map((l: any) => {
+      const p = playerMap.get(l.player_id);
+      return { ...l, name: p?.name ?? "Unknown", jersey_number: p?.jersey_number ?? 0 };
     });
 
-    return NextResponse.json({ summary });
+    const enrichedContext = enrichSessionContext(
+      session,
+      enrichedPlayerMetrics,
+      enrichedCvMetrics,
+      enrichedLoadRecords,
+      recentSessionAverages,
+      tacticalRes.data
+    );
+
+    if (metrics.length === 0) {
+      return NextResponse.json({ summary: "No wearable data available for this session. Attach chest straps to generate AI analysis." });
+    }
+
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.SESSION_DEBRIEF}`;
+
+    const response = await anthropic.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000,
+      system: systemPrompt,
+      messages: [{ role: "user", content: `Generate a session analysis report:\n\n${enrichedContext}\n\nFollow the SESSION DEBRIEF output format. Rate the session 1-10 using the rubric. Identify top/bottom performers relative to their baselines. Give 5 specific recommendations for the next session.` }],
+    });
+
+    const textBlock = response.content.find(b => b.type === "text");
+    return NextResponse.json({ summary: (textBlock as any)?.text ?? "Unable to generate summary." });
   } catch (error) {
     console.error("Session summary error:", error);
     return NextResponse.json(

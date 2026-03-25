@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
+import { SYSTEM_PROMPTS } from "@/lib/ai/prompts";
+import { enrichSessionContext } from "@/lib/ai/enrich-context";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -41,15 +43,17 @@ export async function POST(request: NextRequest) {
     if (!session) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
     // Fetch all data
-    const [metricsRes, tacticalRes, loadRes] = await Promise.all([
+    const [metricsRes, tacticalRes, loadRes, cvRes] = await Promise.all([
       supabase.from("wearable_metrics").select("*").eq("session_id", sessionId),
       supabase.from("tactical_metrics").select("*").eq("session_id", sessionId).maybeSingle(),
       supabase.from("load_records").select("*").eq("session_id", sessionId),
+      supabase.from("cv_metrics").select("*").eq("session_id", sessionId),
     ]);
 
     const metrics = metricsRes.data ?? [];
     const tactical = tacticalRes.data;
     const loadRecords = loadRes.data ?? [];
+    const cvMetrics = cvRes.data ?? [];
 
     // Fetch players separately (NO FK JOINS)
     const allPlayerIds = [...new Set([
@@ -70,46 +74,72 @@ export async function POST(request: NextRequest) {
       videoTags = (tags ?? []).map((t: any) => ({ ...t, player: playerMap.get(t.player_id) }));
     }
 
-    // Build context
-    let ctx = `SESSION: ${session.date} | ${session.type} | ${session.location} | ${session.duration_minutes} min | Age Group: ${session.age_group}\n`;
-    if (session.notes) ctx += `Notes: ${session.notes}\n`;
+    // Fetch recent session averages (last 5 sessions for comparison)
+    const { data: recentSessions } = await supabase
+      .from("sessions")
+      .select("id")
+      .eq("academy_id", profile.academy_id)
+      .lt("date", session.date)
+      .order("date", { ascending: false })
+      .limit(5);
 
-    ctx += `\nWEARABLE METRICS (${metrics.length} players tracked):\n`;
-    for (const m of metrics) {
+    let recentSessionAverages: { avgTrimp: number; avgHr: number; avgZ45: number; count: number } | null = null;
+    if (recentSessions && recentSessions.length > 0) {
+      const recentIds = recentSessions.map((s: any) => s.id);
+      const { data: recentMetrics } = await supabase
+        .from("wearable_metrics")
+        .select("trimp_score, hr_avg, hr_zone_4_pct, hr_zone_5_pct")
+        .in("session_id", recentIds);
+      if (recentMetrics && recentMetrics.length > 0) {
+        recentSessionAverages = {
+          avgTrimp: Math.round(recentMetrics.reduce((s: number, m: any) => s + m.trimp_score, 0) / recentMetrics.length),
+          avgHr: Math.round(recentMetrics.reduce((s: number, m: any) => s + m.hr_avg, 0) / recentMetrics.length),
+          avgZ45: Math.round(recentMetrics.reduce((s: number, m: any) => s + m.hr_zone_4_pct + m.hr_zone_5_pct, 0) / recentMetrics.length),
+          count: recentSessions.length,
+        };
+      }
+    }
+
+    // Build enriched context
+    const enrichedPlayerMetrics = metrics.map((m: any) => {
       const p = playerMap.get(m.player_id);
-      if (!p) continue;
-      ctx += `#${p.jersey_number} ${p.name} (${p.position}): HR avg ${m.hr_avg} / max ${m.hr_max}, TRIMP ${Math.round(m.trimp_score)}, Z4+Z5 ${Math.round(m.hr_zone_4_pct + m.hr_zone_5_pct)}%`;
-      if (m.hr_recovery_60s) ctx += `, Recovery ${m.hr_recovery_60s} bpm/60s`;
-      ctx += `\n`;
-    }
+      return { ...m, name: p?.name ?? "Unknown", position: p?.position ?? "", jersey_number: p?.jersey_number ?? 0 };
+    });
+    const enrichedCvMetrics = cvMetrics.map((m: any) => {
+      const p = playerMap.get(m.player_id);
+      return { ...m, name: p?.name ?? "Unknown", position: p?.position ?? "", jersey_number: p?.jersey_number ?? 0 };
+    });
+    const enrichedLoadRecords = loadRecords.map((l: any) => {
+      const p = playerMap.get(l.player_id);
+      return { ...l, name: p?.name ?? "Unknown", jersey_number: p?.jersey_number ?? 0 };
+    });
 
-    if (tactical) {
-      ctx += `\nTACTICAL: Formation: ${tactical.avg_formation ?? "N/A"} | Possession: ${tactical.possession_pct ?? "N/A"}% | PPDA: ${tactical.pressing_intensity ?? "N/A"}`;
-      if (tactical.transition_speed_atk_s) ctx += ` | Transition ATK: ${tactical.transition_speed_atk_s}s DEF: ${tactical.transition_speed_def_s}s`;
-      ctx += `\n`;
-    }
+    const enrichedContext = enrichSessionContext(
+      session,
+      enrichedPlayerMetrics,
+      enrichedCvMetrics,
+      enrichedLoadRecords,
+      recentSessionAverages,
+      tactical
+    );
 
+    // Add video tags to context
+    let videoCtx = "";
     if (videoTags.length > 0) {
-      ctx += `\nVIDEO TAGS (${videoTags.length}):\n`;
+      videoCtx = `\n\nVIDEO TAGS (${videoTags.length}):\n`;
       for (const tag of videoTags.slice(0, 15)) {
         const min = Math.floor(tag.timestamp_start / 60);
-        ctx += `  ${min}' ${tag.tag_type} — ${tag.player?.name ?? "Unknown"}: ${tag.label ?? ""}\n`;
+        videoCtx += `  ${min}' ${tag.tag_type} — ${tag.player?.name ?? "Unknown"}: ${tag.label ?? ""}\n`;
       }
     }
 
-    if (loadRecords.length > 0) {
-      ctx += `\nLOAD:\n`;
-      for (const l of loadRecords) {
-        const p = playerMap.get(l.player_id);
-        if (!p) continue;
-        ctx += `#${p.jersey_number} ${p.name}: ACWR ${l.acwr_ratio} (${l.risk_flag})\n`;
-      }
-    }
+    const systemPrompt = `${SYSTEM_PROMPTS.BASE_ANALYST}\n\n${SYSTEM_PROMPTS.SESSION_DEBRIEF}`;
 
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-20250514",
-      max_tokens: 2000,
-      messages: [{ role: "user", content: `Generate a post-match debrief:\n\n${ctx}\n\nInclude: ## Match Summary, ## Player Ratings (1-10 each), ## Key Moments, ## Tactical Assessment, ## What Worked, ## What Didn't, ## Recommendations. Be specific, cite numbers.` }],
+      max_tokens: 2500,
+      system: systemPrompt,
+      messages: [{ role: "user", content: `Generate a post-session debrief for this session:\n\n${enrichedContext}${videoCtx}\n\nFollow the SESSION DEBRIEF output format exactly. Rate each player 1-10 using the rubric. Identify the 3 most important coaching points with data, significance, and action.` }],
     });
 
     const textBlock = response.content.find((b) => b.type === "text") as { type: "text"; text: string } | undefined;
