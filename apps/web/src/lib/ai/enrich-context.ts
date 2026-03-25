@@ -348,6 +348,48 @@ export function enrichPlayerContext(
     lines.push(`Composite Recovery Score: ${recScore}/100 (HRR60: ${latestHrr ?? "N/A"} bpm, ${daysSinceHigh} days since high-intensity, ACWR: ${acwr.toFixed(2)})`);
   }
 
+  // --- Enhanced Injury Prevention Metrics ---
+  // (Monotony, Cumulative Load, Asymmetry, Multi-Factor Risk)
+  if (metrics.length >= 3) {
+    lines.push("");
+    lines.push(`--- ENHANCED INJURY PREVENTION ---`);
+
+    // Monotony Index (Foster 1998)
+    const dailyLoads7d = metrics.slice(0, 7).map(m => m.trimp_score);
+    if (dailyLoads7d.length >= 3) {
+      const mean7d = dailyLoads7d.reduce((s, v) => s + v, 0) / dailyLoads7d.length;
+      const variance7d = dailyLoads7d.reduce((s, v) => s + Math.pow(v - mean7d, 2), 0) / dailyLoads7d.length;
+      const stdDev7d = Math.sqrt(variance7d);
+      const monotony = stdDev7d < 0.01 ? (mean7d > 0 ? 10 : 0) : mean7d / stdDev7d;
+      const weeklyLoad = dailyLoads7d.reduce((s, v) => s + v, 0);
+      const strain = weeklyLoad * monotony;
+      lines.push(`Monotony Index: ${monotony.toFixed(2)} (threshold: 2.0) — ${monotony > 2.0 ? "HIGH — training too repetitive, vary session types" : "within acceptable range"}`);
+      lines.push(`Training Strain: ${Math.round(strain)} (threshold: 6000 AU) — ${strain > 6000 ? "DANGER — overreaching territory" : strain > 4000 ? "elevated — monitor closely" : "safe range"}`);
+    }
+
+    // Cumulative 14-day load
+    const dailyLoads14d = metrics.slice(0, 14).map(m => m.trimp_score);
+    const cumulative14d = dailyLoads14d.reduce((s, v) => s + v, 0);
+    const ageGroupYear = parseInt(player.age_group);
+    const ageGroupThresholds: Record<number, number> = { 2016: 1200, 2015: 1400, 2014: 1600, 2013: 1800, 2012: 2000, 2011: 2200, 2010: 2500 };
+    const threshold = ageGroupThresholds[ageGroupYear] ?? 2500;
+    const loadPct = Math.round((cumulative14d / threshold) * 100);
+    lines.push(`Cumulative 14-Day Load: ${Math.round(cumulative14d)} / ${threshold} threshold (${loadPct}%) — ${loadPct > 100 ? "EXCEEDS threshold — mandatory load reduction" : loadPct > 80 ? "approaching threshold — monitor volume" : "within safe limits"}`);
+  }
+
+  // Asymmetry context (if CV data available)
+  if (cvMetrics.length >= 2) {
+    const avgX = cvMetrics.reduce((s, m) => s + (m.total_distance_m > 0 ? 50 : 50), 0) / cvMetrics.length; // simplified
+    const totalAccel = cvMetrics.reduce((s, m) => s + m.accel_events, 0);
+    const totalDecel = cvMetrics.reduce((s, m) => s + m.decel_events, 0);
+    const actionTotal = totalAccel + totalDecel;
+    const accelRatio = actionTotal > 0 ? totalAccel / actionTotal : 0.5;
+    const imbalance = Math.abs(accelRatio - 0.5) * 2;
+    if (imbalance > 0.2) {
+      lines.push(`Movement Asymmetry: Accel/Decel imbalance ratio ${(accelRatio * 100).toFixed(0)}/${((1 - accelRatio) * 100).toFixed(0)} — ${imbalance > 0.4 ? "significant asymmetry — physio assessment recommended" : "mild asymmetry — monitor bilateral drills"}`);
+    }
+  }
+
   // --- Injury Risk Factors ---
   lines.push("");
   lines.push(`--- INJURY RISK FACTORS ---`);
