@@ -57,9 +57,9 @@ function assessMetric(current: number, history: number[], label: string): { tren
   if (history.length === 0) return { trend: "N/A", color: "text-white/60", icon: Minus, insight: `First recorded value for ${label}.` };
   const avg = history.reduce((s, v) => s + v, 0) / history.length;
   const diff = ((current - avg) / avg) * 100;
-  if (diff > 10) return { trend: `+${Math.round(diff)}%`, color: "text-[#00ff88]", icon: TrendingUp, insight: `${label} is ${Math.round(diff)}% above the team's recent average (${avg.toFixed(1)}).` };
-  if (diff < -10) return { trend: `${Math.round(diff)}%`, color: "text-[#ff3355]", icon: TrendingDown, insight: `${label} dropped ${Math.abs(Math.round(diff))}% below the recent average (${avg.toFixed(1)}).` };
-  return { trend: "Stable", color: "text-[#00d4ff]", icon: Minus, insight: `${label} is consistent with recent sessions (avg ${avg.toFixed(1)}).` };
+  if (diff > 10) return { trend: `+${Math.round(diff)}%`, color: "text-[#00ff88]", icon: TrendingUp, insight: `${label} is ${Math.round(diff)}% above the team's recent average (${(avg ?? 0).toFixed(1)}).` };
+  if (diff < -10) return { trend: `${Math.round(diff)}%`, color: "text-[#ff3355]", icon: TrendingDown, insight: `${label} dropped ${Math.abs(Math.round(diff))}% below the recent average (${(avg ?? 0).toFixed(1)}).` };
+  return { trend: "Stable", color: "text-[#00d4ff]", icon: Minus, insight: `${label} is consistent with recent sessions (avg ${(avg ?? 0).toFixed(1)}).` };
 }
 
 function getPressingAnalysis(ppda: number): { label: string; color: string; analysis: string } {
@@ -82,15 +82,15 @@ function getPossessionAnalysis(pct: number, type: string): string {
 }
 
 function getCompactnessAnalysis(avg: number, std: number): string {
-  if (avg < 25) return `Very compact shape (${avg.toFixed(1)}m). The team stayed tight and disciplined. Low variability (±${std.toFixed(1)}m) shows good collective awareness. Risk: can be vulnerable to balls over the top.`;
-  if (avg < 30) return `Good compactness (${avg.toFixed(1)}m). The team maintained a solid shape without being too narrow. Variability of ±${std.toFixed(1)}m is normal.`;
-  if (avg < 35) return `Moderate compactness (${avg.toFixed(1)}m). The team occasionally stretched, creating gaps. ±${std.toFixed(1)}m variability suggests inconsistency in shape maintenance.`;
-  return `Spread out shape (${avg.toFixed(1)}m). The team was stretched, with significant gaps between lines. High variability (±${std.toFixed(1)}m) indicates poor collective positioning. Needs work in team shape drills.`;
+  if (avg < 25) return `Very compact shape (${(avg ?? 0).toFixed(1)}m). The team stayed tight and disciplined. Low variability (±${(std ?? 0).toFixed(1)}m) shows good collective awareness. Risk: can be vulnerable to balls over the top.`;
+  if (avg < 30) return `Good compactness (${(avg ?? 0).toFixed(1)}m). The team maintained a solid shape without being too narrow. Variability of ±${(std ?? 0).toFixed(1)}m is normal.`;
+  if (avg < 35) return `Moderate compactness (${(avg ?? 0).toFixed(1)}m). The team occasionally stretched, creating gaps. ±${(std ?? 0).toFixed(1)}m variability suggests inconsistency in shape maintenance.`;
+  return `Spread out shape (${(avg ?? 0).toFixed(1)}m). The team was stretched, with significant gaps between lines. High variability (±${(std ?? 0).toFixed(1)}m) indicates poor collective positioning. Needs work in team shape drills.`;
 }
 
 function getTransitionAnalysis(atk: number, def: number): string {
   const faster = atk < def ? "attacking" : "defensive";
-  const diff = Math.abs(atk - def).toFixed(1);
+  const diff = Math.abs((atk ?? 0) - (def ?? 0)).toFixed(1);
   let analysis = `The team transitions to ${faster} mode ${diff}s faster. `;
   if (atk < 3.5) analysis += "Attacking transitions are very quick — the team counter-attacks effectively. ";
   else if (atk > 4.5) analysis += "Slow attacking transitions — the team takes too long to exploit turnovers. Work on transition drills. ";

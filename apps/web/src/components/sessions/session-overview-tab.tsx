@@ -338,21 +338,21 @@ export function SessionOverviewTab({
   // CV metrics aggregates
   const avgDistance = hasCvData
     ? Math.round(
-        cvMetrics.reduce((s, m) => s + m.total_distance_m, 0) / cvMetrics.length
+        cvMetrics.reduce((s, m) => s + (m.total_distance_m ?? 0), 0) / cvMetrics.length
       )
     : null;
   const avgMaxSpeed = hasCvData
     ? (
-        cvMetrics.reduce((s, m) => s + m.max_speed_kmh, 0) / cvMetrics.length
+        cvMetrics.reduce((s, m) => s + (m.max_speed_kmh ?? 0), 0) / cvMetrics.length
       ).toFixed(1)
     : null;
   const avgSprints = hasCvData
     ? Math.round(
-        cvMetrics.reduce((s, m) => s + m.sprint_count, 0) / cvMetrics.length
+        cvMetrics.reduce((s, m) => s + (m.sprint_count ?? 0), 0) / cvMetrics.length
       )
     : null;
   const totalSprints = hasCvData
-    ? cvMetrics.reduce((s, m) => s + m.sprint_count, 0)
+    ? cvMetrics.reduce((s, m) => s + (m.sprint_count ?? 0), 0)
     : null;
   const avgHSR = hasCvData
     ? Math.round(
