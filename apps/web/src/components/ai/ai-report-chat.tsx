@@ -226,7 +226,7 @@ export function AiReportChat({
                 <div className="absolute inset-0 rounded-full border-2 border-[#a855f7]/30 animate-spin border-t-[#a855f7]" style={{ animationDuration: "2s" }} />
               </div>
               <p className="text-sm text-[#a855f7] mt-4 animate-pulse">
-                Analyzing data with Claude AI...
+                Analyzing data with Coach M8 AI...
               </p>
             </div>
           )}

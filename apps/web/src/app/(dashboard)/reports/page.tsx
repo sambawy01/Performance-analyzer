@@ -142,7 +142,7 @@ export default function ReportsHubPage() {
 
       {/* Footer note */}
       <p className="text-xs text-white/20 text-center">
-        All reports are generated using live academy data · Powered by Claude AI
+        All reports are generated using live academy data · Powered by Coach M8 AI
       </p>
     </div>
   );
