@@ -722,7 +722,7 @@ export function SessionOverviewTab({
                 .map((m) => ({
                   name: m.players?.name ?? "Unknown",
                   jersey: m.players?.jersey_number ?? 0,
-                  value: `${(m.total_distance_m / 1000).toFixed(1)} km`,
+                  value: `${((m.total_distance_m ?? 0) / 1000).toFixed(1)} km`,
                 }))}
             />
             <StatCard
@@ -738,7 +738,7 @@ export function SessionOverviewTab({
                 .map((m) => ({
                   name: m.players?.name ?? "Unknown",
                   jersey: m.players?.jersey_number ?? 0,
-                  value: `${m.max_speed_kmh.toFixed(1)} km/h`,
+                  value: `${(m.max_speed_kmh ?? 0).toFixed(1)} km/h`,
                 }))}
             />
             <StatCard

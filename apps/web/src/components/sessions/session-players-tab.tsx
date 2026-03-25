@@ -161,13 +161,13 @@ export function SessionPlayersTab({
                   <div className="grid grid-cols-3 gap-2 text-center text-xs mb-2">
                     <div className="rounded-md bg-white/[0.03] border border-white/[0.05] p-1.5">
                       <p className="font-mono font-semibold text-[#00d4ff]">
-                        {(cv.total_distance_m / 1000).toFixed(1)} km
+                        {((cv.total_distance_m ?? 0) / 1000).toFixed(1)} km
                       </p>
                       <p className="text-[9px] text-white/40">Distance</p>
                     </div>
                     <div className="rounded-md bg-white/[0.03] border border-white/[0.05] p-1.5">
                       <p className="font-mono font-semibold text-[#00ff88]">
-                        {cv.max_speed_kmh.toFixed(1)} km/h
+                        {(cv.max_speed_kmh ?? 0).toFixed(1)} km/h
                       </p>
                       <p className="text-[9px] text-white/40">Top Speed</p>
                     </div>

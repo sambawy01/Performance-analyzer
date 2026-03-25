@@ -225,7 +225,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-4 mb-3">
-              <p className={`metric-value ${pressingInfo.color}`}>{tactical.pressing_intensity.toFixed(1)}</p>
+              <p className={`metric-value ${pressingInfo.color}`}>{(tactical.pressing_intensity ?? 0).toFixed(1)}</p>
               <Badge className={`${pressingInfo.color} bg-white/[0.04] border border-white/10`}>
                 {pressingInfo.label}
               </Badge>
@@ -260,20 +260,20 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
               <div className="grid grid-cols-3 gap-4 mb-3">
                 <div>
                   <p className="data-label mb-1"><MetricInfo term="compactness">Compactness</MetricInfo></p>
-                  <p className="text-xl font-mono font-bold text-white">{tactical.compactness_avg.toFixed(1)}m</p>
-                  <p className="text-xs text-white/60">±{tactical.compactness_std.toFixed(1)}m</p>
+                  <p className="text-xl font-mono font-bold text-white">{(tactical.compactness_avg ?? 0).toFixed(1)}m</p>
+                  <p className="text-xs text-white/60">±{(tactical.compactness_std ?? 0).toFixed(1)}m</p>
                 </div>
                 {tactical.defensive_line_height_avg !== null && (
                   <div>
                     <p className="data-label mb-1"><MetricInfo term="def-line">Def. Line</MetricInfo></p>
-                    <p className="text-xl font-mono font-bold text-white">{tactical.defensive_line_height_avg.toFixed(0)}m</p>
+                    <p className="text-xl font-mono font-bold text-white">{(tactical.defensive_line_height_avg ?? 0).toFixed(0)}m</p>
                     <p className="text-xs text-white/60">from own goal</p>
                   </div>
                 )}
                 {tactical.team_width_avg !== null && tactical.team_length_avg !== null && (
                   <div>
                     <p className="data-label mb-1"><MetricInfo term="team-shape">Team Shape</MetricInfo></p>
-                    <p className="text-xl font-mono font-bold text-white">{tactical.team_width_avg.toFixed(0)}×{tactical.team_length_avg.toFixed(0)}</p>
+                    <p className="text-xl font-mono font-bold text-white">{(tactical.team_width_avg ?? 0).toFixed(0)}×{(tactical.team_length_avg ?? 0).toFixed(0)}</p>
                     <p className="text-xs text-white/60">W × L meters</p>
                   </div>
                 )}
@@ -302,7 +302,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                   </div>
                   <div>
                     <p className="data-label">Def → Atk</p>
-                    <p className="text-xl font-mono font-bold text-[#00ff88]">{tactical.transition_speed_atk_s.toFixed(1)}s</p>
+                    <p className="text-xl font-mono font-bold text-[#00ff88]">{(tactical.transition_speed_atk_s ?? 0).toFixed(1)}s</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -311,7 +311,7 @@ export function SessionTacticalTab({ tactical, history }: { tactical: TacticalDa
                   </div>
                   <div>
                     <p className="data-label">Atk → Def</p>
-                    <p className="text-xl font-mono font-bold text-[#ff3355]">{tactical.transition_speed_def_s.toFixed(1)}s</p>
+                    <p className="text-xl font-mono font-bold text-[#ff3355]">{(tactical.transition_speed_def_s ?? 0).toFixed(1)}s</p>
                   </div>
                 </div>
               </div>
