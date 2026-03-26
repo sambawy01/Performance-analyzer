@@ -12,7 +12,11 @@ import {
   ChevronDown,
   ChevronUp,
   Zap,
+  Eye,
+  UserMinus,
+  UserPlus,
 } from "lucide-react";
+import { ExpandableCard } from "@/components/ui/expandable-card";
 
 // Dynamic import Recharts
 const PieChart = dynamic(() => import("recharts").then((m) => m.PieChart), { ssr: false });
@@ -103,7 +107,6 @@ function StatusBadge({ status }: { status: "ready" | "caution" | "fatigued" }) {
 }
 
 function RecommendedXI({ players }: { players: PlayerReadiness[] }) {
-  // Pick best available by position, preferring higher readiness
   const sorted = [...players]
     .filter((p) => p.status !== "fatigued")
     .sort((a, b) => b.readinessScore - a.readinessScore);
@@ -116,9 +119,7 @@ function RecommendedXI({ players }: { players: PlayerReadiness[] }) {
     const candidate = sorted.find((p) => {
       if (used.has(p.id)) return false;
       const pPos = p.position.toUpperCase();
-      // Exact match or positional group match
       if (pPos === pos) return true;
-      // Fallback groupings
       if (pos === "CB" && ["CB", "DC"].includes(pPos)) return true;
       if (pos === "CDM" && ["CDM", "DM", "CM"].includes(pPos)) return true;
       if (pos === "CM" && ["CM", "CDM", "CAM"].includes(pPos)) return true;
@@ -136,7 +137,6 @@ function RecommendedXI({ players }: { players: PlayerReadiness[] }) {
     }
   }
 
-  // Fill remaining spots with best available
   if (selected.length < 11) {
     const remaining = sorted.filter((p) => !used.has(p.id));
     for (const p of remaining) {
@@ -160,35 +160,70 @@ function RecommendedXI({ players }: { players: PlayerReadiness[] }) {
         <span className="text-xs text-white/30">Based on readiness + position coverage</span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        {selected.slice(0, 11).map((p, i) => (
-          <div
-            key={p.id}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all duration-200 hover:scale-[1.01]"
-            style={{
-              background: "rgba(255,255,255,0.03)",
-              border: "1px solid rgba(255,255,255,0.06)",
-            }}
-          >
-            <span className="text-sm font-mono font-bold text-[#00d4ff] w-5">{i + 1}</span>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-mono text-white/30">#{p.jerseyNumber}</span>
-                <span className="text-sm font-medium text-white truncate">{p.name}</span>
+        {selected.slice(0, 11).map((p, i) => {
+          const scoreColor = p.readinessScore >= 70 ? COLORS.ready : p.readinessScore >= 45 ? COLORS.caution : COLORS.fatigued;
+          const posIdx = i < positions.length ? positions[i] : p.position;
+
+          return (
+            <ExpandableCard
+              key={p.id}
+              compact
+              icon={
+                <span className="text-sm font-mono font-bold text-[#00d4ff] w-5">{i + 1}</span>
+              }
+              title={p.name}
+              subtitle={`#${p.jerseyNumber} -- ${p.position}`}
+              accentColor={scoreColor}
+              preview={
+                <span className="text-sm font-mono font-bold" style={{ color: scoreColor }}>
+                  {p.readinessScore}
+                </span>
+              }
+              actions={[
+                {
+                  label: "Add to Starting XI",
+                  icon: <UserPlus className="h-3 w-3" />,
+                  onClick: () => console.log(`Add to XI: ${p.name}`),
+                  variant: "primary",
+                  color: "#00d4ff",
+                },
+                {
+                  label: "View Profile",
+                  icon: <Eye className="h-3 w-3" />,
+                  href: `/players/${p.id}`,
+                  variant: "secondary",
+                },
+              ]}
+            >
+              <div className="space-y-2">
+                <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold">
+                  Why Selected for Position {posIdx}
+                </p>
+                <p className="text-[11px] text-white/50 leading-relaxed">
+                  {p.name} has a readiness score of {p.readinessScore}/100.
+                  {p.readinessScore >= 70
+                    ? " Strong recovery metrics and balanced load profile make them the best available option for this position."
+                    : p.readinessScore >= 45
+                      ? " Some fatigue indicators present but still fit to play. Monitor during the match for signs of reduced performance."
+                      : " Limited options available for this position. Consider tactical adjustments to reduce their workload during the match."
+                  }
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: "Load", value: p.factors.loadTrend, max: 25 },
+                    { label: "Recovery", value: p.factors.recoveryQuality, max: 25 },
+                    { label: "Form", value: p.factors.performanceTrend, max: 10 },
+                  ].map((f) => (
+                    <div key={f.label} className="rounded-lg px-2 py-1.5 bg-white/[0.03] border border-white/[0.05] text-center">
+                      <p className="text-[9px] text-white/40">{f.label}</p>
+                      <p className="text-xs font-mono font-bold text-white">{f.value}<span className="text-white/20">/{f.max}</span></p>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <span className="text-xs text-white/40">{p.position}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span
-                className="text-sm font-mono font-bold"
-                style={{
-                  color: p.readinessScore >= 70 ? COLORS.ready : p.readinessScore >= 45 ? COLORS.caution : COLORS.fatigued,
-                }}
-              >
-                {p.readinessScore}
-              </span>
-            </div>
-          </div>
-        ))}
+            </ExpandableCard>
+          );
+        })}
       </div>
       {selected.length < 11 && (
         <p className="text-xs text-white/30 mt-3">
@@ -409,7 +444,7 @@ Fatigued: ${fatiguedNames.join(", ") || "none"}.`;
       {/* Recommended Starting XI */}
       <RecommendedXI players={players} />
 
-      {/* Player List */}
+      {/* Player List — expandable rows with factor breakdown + actions */}
       <div
         className="rounded-xl border overflow-hidden"
         style={{
@@ -441,80 +476,141 @@ Fatigued: ${fatiguedNames.join(", ") || "none"}.`;
         </div>
 
         <div className="divide-y divide-white/[0.04]">
-          {sortedPlayers.map((player) => (
-            <div key={player.id}>
-              <button
-                onClick={() =>
-                  setExpandedPlayer(expandedPlayer === player.id ? null : player.id)
-                }
-                className="w-full px-5 py-3 flex items-center gap-4 hover:bg-white/[0.02] transition-all"
-              >
-                <span className="text-xs font-mono text-white/30 w-6">#{player.jerseyNumber}</span>
-                <div className="flex-1 min-w-0 text-left">
-                  <a
-                    href={`/players/${player.id}`}
-                    className="text-sm font-medium text-white hover:text-[#00d4ff] transition-colors"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {player.name}
-                  </a>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs text-white/30">{player.position}</span>
-                    <span className="text-xs text-white/20">{player.ageGroup}</span>
-                  </div>
-                </div>
-                <div className="w-32 hidden sm:block">
-                  <ReadinessBar score={player.readinessScore} />
-                </div>
-                <StatusBadge status={player.status} />
-                {expandedPlayer === player.id ? (
-                  <ChevronUp className="h-4 w-4 text-white/20" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-white/20" />
-                )}
-              </button>
+          {sortedPlayers.map((player) => {
+            const isExpanded = expandedPlayer === player.id;
+            const scoreColor = player.readinessScore >= 70 ? COLORS.ready : player.readinessScore >= 45 ? COLORS.caution : COLORS.fatigued;
 
-              {expandedPlayer === player.id && (
+            return (
+              <div key={player.id}>
+                <button
+                  onClick={() =>
+                    setExpandedPlayer(isExpanded ? null : player.id)
+                  }
+                  className="w-full px-5 py-3 flex items-center gap-4 hover:bg-white/[0.02] transition-all"
+                >
+                  <span className="text-xs font-mono text-white/30 w-6">#{player.jerseyNumber}</span>
+                  <div className="flex-1 min-w-0 text-left">
+                    <a
+                      href={`/players/${player.id}`}
+                      className="text-sm font-medium text-white hover:text-[#00d4ff] transition-colors"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {player.name}
+                    </a>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-white/30">{player.position}</span>
+                      <span className="text-xs text-white/20">{player.ageGroup}</span>
+                    </div>
+                  </div>
+                  <div className="w-32 hidden sm:block">
+                    <ReadinessBar score={player.readinessScore} />
+                  </div>
+                  <StatusBadge status={player.status} />
+                  {isExpanded ? (
+                    <ChevronUp className="h-4 w-4 text-white/20" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-white/20" />
+                  )}
+                </button>
+
+                {/* Expanded detail with factors + actions */}
                 <div
-                  className="px-5 pb-4 pt-1 ml-10"
+                  className="transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden"
                   style={{
-                    background: "rgba(255,255,255,0.01)",
+                    maxHeight: isExpanded ? "500px" : "0px",
+                    opacity: isExpanded ? 1 : 0,
                   }}
                 >
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                    {[
-                      { label: "Load Trend", value: player.factors.loadTrend, max: 25 },
-                      { label: "Recovery", value: player.factors.recoveryQuality, max: 25 },
-                      { label: "Rest Days", value: player.factors.daysSinceHighIntensity, max: 20 },
-                      { label: "ACWR Fit", value: player.factors.acwrProximity, max: 20 },
-                      { label: "Performance", value: player.factors.performanceTrend, max: 10 },
-                    ].map((f) => (
-                      <div
-                        key={f.label}
-                        className="rounded-lg px-3 py-2"
+                  <div
+                    className="px-5 pb-4 pt-1 ml-10"
+                    style={{
+                      background: "rgba(255,255,255,0.01)",
+                    }}
+                  >
+                    {/* Factor breakdown */}
+                    <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-2">Factor Breakdown</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                      {[
+                        { label: "Load Trend", value: player.factors.loadTrend, max: 25 },
+                        { label: "Recovery", value: player.factors.recoveryQuality, max: 25 },
+                        { label: "Rest Days", value: player.factors.daysSinceHighIntensity, max: 20 },
+                        { label: "ACWR Fit", value: player.factors.acwrProximity, max: 20 },
+                        { label: "Performance", value: player.factors.performanceTrend, max: 10 },
+                      ].map((f) => (
+                        <div
+                          key={f.label}
+                          className="rounded-lg px-3 py-2"
+                          style={{
+                            background: "rgba(255,255,255,0.03)",
+                            border: "1px solid rgba(255,255,255,0.05)",
+                          }}
+                        >
+                          <p className="text-xs text-white/40 mb-1">{f.label}</p>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-sm font-mono font-bold text-white">{f.value}</span>
+                            <span className="text-xs text-white/20">/{f.max}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Recent form summary */}
+                    {player.latestAcwr !== null && (
+                      <p className="text-xs text-white/30 mt-2 font-mono">
+                        ACWR: {player.latestAcwr.toFixed(2)}
+                        {player.latestRecovery !== null && ` | Recovery: ${player.latestRecovery} bpm`}
+                      </p>
+                    )}
+
+                    {/* Action buttons */}
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      <a
+                        href={`/players/${player.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                         style={{
-                          background: "rgba(255,255,255,0.03)",
-                          border: "1px solid rgba(255,255,255,0.05)",
+                          background: "rgba(0,212,255,0.08)",
+                          border: "1px solid rgba(0,212,255,0.20)",
+                          color: "#00d4ff",
                         }}
                       >
-                        <p className="text-xs text-white/40 mb-1">{f.label}</p>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-sm font-mono font-bold text-white">{f.value}</span>
-                          <span className="text-xs text-white/20">/{f.max}</span>
-                        </div>
-                      </div>
-                    ))}
+                        <Eye className="h-3 w-3" />
+                        View Profile
+                      </a>
+                      {player.status === "ready" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); console.log(`Add to XI: ${player.name}`); }}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                          style={{
+                            background: "rgba(0,255,136,0.08)",
+                            border: "1px solid rgba(0,255,136,0.20)",
+                            color: "#00ff88",
+                          }}
+                        >
+                          <UserPlus className="h-3 w-3" />
+                          Add to Starting XI
+                        </button>
+                      )}
+                      {player.status === "fatigued" && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); console.log(`Rest: ${player.name}`); }}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                          style={{
+                            background: "rgba(255,51,85,0.08)",
+                            border: "1px solid rgba(255,51,85,0.20)",
+                            color: "#ff3355",
+                          }}
+                        >
+                          <UserMinus className="h-3 w-3" />
+                          Rest Player
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  {player.latestAcwr !== null && (
-                    <p className="text-xs text-white/30 mt-2 font-mono">
-                      ACWR: {player.latestAcwr.toFixed(2)}
-                      {player.latestRecovery !== null && ` | Recovery: ${player.latestRecovery} bpm`}
-                    </p>
-                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

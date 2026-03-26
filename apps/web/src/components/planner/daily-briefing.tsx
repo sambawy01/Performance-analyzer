@@ -5,8 +5,9 @@ import {
   Sparkles, Clock, AlertTriangle, Target, Activity, Loader2,
   Dumbbell, Moon, Brain, Send, MessageSquare, Calendar,
   Shield, Zap, TrendingUp, TrendingDown, Minus, Trophy,
-  Users, ChevronRight, Star,
+  Users, ChevronRight, Star, Eye, UserMinus, Gauge, FileText,
 } from "lucide-react";
+import { ExpandableCard } from "@/components/ui/expandable-card";
 import type { Session } from "@/types";
 
 interface DailyBriefingProps {
@@ -70,6 +71,164 @@ export function DailyBriefing({
 
   const daysUntilMatch = nextMatch ? Math.ceil((new Date(nextMatch.date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
 
+  // Build insight items for expandable cards
+  type InsightItem = {
+    id: string;
+    dotColor: string;
+    summary: React.ReactNode;
+    detail: string;
+    actions: Array<{ label: string; icon: React.ReactNode; href?: string; onClick?: () => void; variant: "primary" | "secondary" | "danger"; color?: string }>;
+  };
+
+  const insightItems: InsightItem[] = [];
+
+  if (redPlayers.length > 0) {
+    insightItems.push({
+      id: "red-risk",
+      dotColor: "#ff3355",
+      summary: (
+        <p className="text-xs text-white/60 leading-relaxed">
+          <span className="text-[#ff3355] font-semibold">High injury risk:</span> {redPlayers.slice(0, 3).map(p => `${p.name} (ACWR ${p.acwr.toFixed(2)})`).join(", ")}
+          {redPlayers.length > 3 && ` +${redPlayers.length - 3} more`}. Recommend full rest or light recovery only.
+        </p>
+      ),
+      detail: `These players have ACWR ratios above 1.5, indicating acute load significantly exceeds their chronic baseline. Training at this level increases soft-tissue injury risk by 2-4x (Gabbett 2016). Recommendation: Full rest day or pool-based recovery session only. Monitor HR recovery before returning to full training. If a match is within 48 hours, these players should be on the bench unless critical.`,
+      actions: redPlayers.slice(0, 3).map(p => ({
+        label: `View ${p.name.split(" ")[0]}`,
+        icon: <Eye className="h-3 w-3" />,
+        onClick: () => console.log(`View player: ${p.name}`),
+        variant: "primary" as const,
+        color: "#ff3355",
+      })),
+    });
+  }
+
+  if (amberPlayers.length > 0) {
+    insightItems.push({
+      id: "amber-load",
+      dotColor: "#ff6b35",
+      summary: (
+        <p className="text-xs text-white/60 leading-relaxed">
+          <span className="text-[#ff6b35] font-semibold">{amberPlayers.length} players need load monitoring.</span>
+          {" "}Reduce volume for {amberPlayers.slice(0, 2).map(p => p.name).join(" & ")}
+          {amberPlayers.length > 2 && ` and ${amberPlayers.length - 2} others`}.
+          {todaySession ? " Cap their session at 60 minutes." : ""}
+        </p>
+      ),
+      detail: `ACWR ratios between 1.25-1.5 suggest these players are accumulating more acute load than their bodies have adapted to chronically. While not immediately dangerous, sustained amber-zone training without recovery increases injury probability. Reduce session intensity by 20-30% for these players, avoid high-speed running drills, and ensure adequate hydration and nutrition protocols.`,
+      actions: [
+        { label: "Modify Session", icon: <Dumbbell className="h-3 w-3" />, onClick: () => console.log("Modify session for amber players"), variant: "primary" as const, color: "#ff6b35" },
+        { label: "View Injury Report", icon: <FileText className="h-3 w-3" />, href: "/injury-prevention", variant: "secondary" as const },
+      ],
+    });
+  }
+
+  if (daysUntilMatch !== null && daysUntilMatch <= 3 && daysUntilMatch > 0) {
+    insightItems.push({
+      id: "match-prep",
+      dotColor: "#a855f7",
+      summary: (
+        <p className="text-xs text-white/60 leading-relaxed">
+          <span className="text-[#a855f7] font-semibold">Match in {daysUntilMatch}d.</span>
+          {daysUntilMatch === 1
+            ? " Today should be activation only -- 30min walk-through, set pieces, team shape. No high intensity."
+            : daysUntilMatch === 2
+              ? " Keep today moderate. Focus on tactical patterns and transition drills. Avoid heavy conditioning."
+              : " Good window for a sharp, match-intensity session. Test your starting XI shape."}
+        </p>
+      ),
+      detail: daysUntilMatch === 1
+        ? "Match day minus 1 protocol: Focus on team shape activation, set-piece rehearsal, and mental preparation. Session should last no more than 30-40 minutes. Avoid any high-intensity running or conditioning work. Players should feel fresh and sharp, not fatigued. Light stretching and mobility work in the afternoon."
+        : daysUntilMatch === 2
+          ? "Match day minus 2 protocol: Moderate-intensity session focusing on tactical patterns, pressing triggers, and transition play. Keep total running volume below 5km per player. Avoid heavy eccentric loading (hill sprints, plyometrics). End with short-sided game at 70% intensity for match sharpness."
+          : "Match day minus 3 protocol: This is the last opportunity for a high-intensity session before the match taper begins. Run match-simulation drills, test your starting XI formation, and assess any borderline fitness decisions. Full intensity for 60-70 minutes is appropriate.",
+      actions: [
+        { label: "View Match Readiness", icon: <Shield className="h-3 w-3" />, href: "/match-readiness", variant: "primary" as const, color: "#a855f7" },
+        { label: "Design Session", icon: <Dumbbell className="h-3 w-3" />, href: "/session-design", variant: "secondary" as const },
+      ],
+    });
+  }
+
+  if (loadTrend !== null && Math.abs(loadTrend) > 10) {
+    insightItems.push({
+      id: "load-trend",
+      dotColor: loadTrend > 10 ? "#ff6b35" : "#00d4ff",
+      summary: (
+        <p className="text-xs text-white/60 leading-relaxed">
+          {loadTrend > 10 ? (
+            <><span className="text-[#ff6b35] font-semibold">Load trending up {loadTrend}%.</span> Squad is accumulating fatigue. If no match this week, schedule a recovery session. If match approaching, taper now.</>
+          ) : (
+            <><span className="text-[#00d4ff] font-semibold">Load down {Math.abs(loadTrend)}%.</span> Good deload phase. Squad should feel fresh. Ideal time to push tactical complexity or high-intensity reps.</>
+          )}
+        </p>
+      ),
+      detail: loadTrend > 10
+        ? `Weekly training load has increased ${loadTrend}% compared to the previous week. Sustained increases above 10% per week are associated with elevated injury risk (Gabbett's acute:chronic workload ratio research). Consider inserting a recovery or technical-only session to allow physiological adaptation. Monitor HR recovery rates -- if declining, fatigue is accumulating.`
+        : `Weekly load has decreased by ${Math.abs(loadTrend)}%, indicating a deload or recovery phase. This is physiologically beneficial -- the squad should feel fresh and ready for high-intensity work. Use this window to introduce new tactical concepts or push high-speed running volume, as injury risk is lower during deload phases.`,
+      actions: [
+        { label: "View Load Data", icon: <Gauge className="h-3 w-3" />, href: "/injury-prevention", variant: "primary" as const, color: loadTrend > 10 ? "#ff6b35" : "#00d4ff" },
+      ],
+    });
+  }
+
+  if (todaySession) {
+    insightItems.push({
+      id: "session-rec",
+      dotColor: "#00d4ff",
+      summary: (
+        <p className="text-xs text-white/60 leading-relaxed">
+          <span className="text-[#00d4ff] font-semibold">Today&apos;s {todaySession.type}:</span>
+          {teamReadiness !== null && teamReadiness < 50
+            ? " Squad readiness is low -- consider reducing planned intensity by 20-30% and shortening to 60 min."
+            : teamReadiness !== null && teamReadiness >= 80
+              ? " Squad is fresh and ready. Push the intensity -- this is a good day for high-tempo tactical work."
+              : ` ${todaySession.duration_minutes} min at ${todaySession.location}. Monitor HR zones closely for flagged players.`}
+        </p>
+      ),
+      detail: teamReadiness !== null && teamReadiness < 50
+        ? "Squad readiness is below 50/100, indicating accumulated fatigue across the group. Reduce planned session intensity by 20-30%, shorten duration to 60 minutes maximum, and avoid high-speed running or plyometric drills. Focus on low-intensity technical work, possession patterns, and tactical understanding. Consider splitting the group -- fresher players can train at higher intensity separately."
+        : teamReadiness !== null && teamReadiness >= 80
+          ? "Squad readiness is above 80/100, indicating players are well-recovered and physically prepared. This is an optimal day for high-intensity tactical training. Push the tempo in small-sided games, include transition drills at match pace, and test tactical patterns under pressure. Monitor flagged players individually but the group can handle maximum output today."
+          : `Standard session day at ${todaySession.location}. Duration: ${todaySession.duration_minutes} minutes. Keep flagged players on modified programs. Use HR zone monitoring to ensure no player exceeds Zone 5 for more than 2 minutes continuously. Post-session: check recovery HR at 60 seconds for all players.`,
+      actions: [
+        { label: "Modify Session", icon: <Dumbbell className="h-3 w-3" />, onClick: () => console.log("Modify session"), variant: "primary" as const },
+        { label: "View Players", icon: <Users className="h-3 w-3" />, href: "/players", variant: "secondary" as const },
+      ],
+    });
+  }
+
+  if (playersAtRisk.length === 0 && (!loadTrend || Math.abs(loadTrend) <= 10) && !todaySession) {
+    insightItems.push({
+      id: "all-clear",
+      dotColor: "#00ff88",
+      summary: (
+        <p className="text-xs text-white/60 leading-relaxed">
+          <span className="text-[#00ff88] font-semibold">All clear.</span> No load alerts, squad is healthy. Rest day -- let the body recover. Good time for video review or individual skill sessions.
+        </p>
+      ),
+      detail: "No players are flagged for injury risk, load trends are stable, and there is no session scheduled today. This is an ideal rest day. Use this time for video analysis, individual skill development for players who want extra work (at low intensity), or tactical classroom sessions. Recovery modalities like cold water immersion, foam rolling, and stretching can also be beneficial.",
+      actions: [
+        { label: "Design Optional Session", icon: <Dumbbell className="h-3 w-3" />, href: "/session-design", variant: "secondary" as const },
+      ],
+    });
+  }
+
+  if (topPerformer) {
+    insightItems.push({
+      id: "top-performer",
+      dotColor: "#ffbb00",
+      summary: (
+        <p className="text-xs text-white/60 leading-relaxed">
+          <span className="text-[#ffbb00] font-semibold">Star performer:</span> #{topPerformer.jersey} {topPerformer.name} leads with TRIMP {topPerformer.trimp} this week. Consider featuring in social media content.
+        </p>
+      ),
+      detail: `${topPerformer.name} (Jersey #${topPerformer.jersey}) has the highest TRIMP accumulation this week at ${topPerformer.trimp}, indicating consistently high training output. This player is showing strong work rate and cardiovascular fitness. Consider: 1) Featuring in academy social media to highlight effort and development, 2) Ensuring adequate recovery to prevent overtraining, 3) Assessing whether this output level is sustainable or if a managed rest is needed.`,
+      actions: [
+        { label: "View Profile", icon: <Eye className="h-3 w-3" />, onClick: () => console.log(`View top performer: ${topPerformer.name}`), variant: "primary" as const, color: "#ffbb00" },
+      ],
+    });
+  }
+
   return (
     <div className="rounded-xl overflow-hidden border border-[#a855f7]/20" style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.08) 0%, rgba(0,212,255,0.04) 50%, rgba(0,255,136,0.04) 100%)" }}>
       {/* Header */}
@@ -79,7 +238,7 @@ export function DailyBriefing({
             <Brain className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h3 className="text-base font-bold text-white">Coach M8 AI — Daily Briefing</h3>
+            <h3 className="text-base font-bold text-white">Coach M8 AI -- Daily Briefing</h3>
             <p className="text-xs text-white/50">
               {new Date().toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
@@ -126,7 +285,7 @@ export function DailyBriefing({
             <div className="flex-1">
               <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Team Readiness</p>
               <div className="flex items-baseline gap-1">
-                <span className="font-mono text-2xl font-bold" style={{ color: readinessColor }}>{teamReadiness ?? "—"}</span>
+                <span className="font-mono text-2xl font-bold" style={{ color: readinessColor }}>{teamReadiness ?? "--"}</span>
                 <span className="text-sm text-white/40">/100</span>
               </div>
               <div className="w-full h-1.5 rounded-full bg-white/[0.06] overflow-hidden mt-1">
@@ -166,7 +325,7 @@ export function DailyBriefing({
             <div>
               <p className="text-xs font-semibold text-white/50 uppercase tracking-wider mb-1">Weekly Load</p>
               <div className="flex items-center gap-2">
-                <span className="font-mono text-xl font-bold text-white">{weekAvgTrimp ?? "—"}</span>
+                <span className="font-mono text-xl font-bold text-white">{weekAvgTrimp ?? "--"}</span>
                 <span className="text-xs text-white/40">avg TRIMP</span>
               </div>
               {loadTrend !== null && (
@@ -201,9 +360,9 @@ export function DailyBriefing({
           )}
         </div>
 
-        {/* Row 3: Watch List + Upcoming + AI Insights — 3 columns */}
+        {/* Row 3: Watch List + Upcoming + AI Insights -- 3 columns */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Watch List */}
+          {/* Watch List — expandable player rows */}
           <div className="rounded-lg bg-white/[0.02] border border-white/[0.06] p-3">
             <div className="flex items-center gap-2 mb-2">
               <AlertTriangle className="h-4 w-4 text-[#ff3355]" />
@@ -217,12 +376,54 @@ export function DailyBriefing({
             ) : (
               <div className="space-y-1.5">
                 {playersAtRisk.slice(0, 5).map((p) => (
-                  <div key={p.jerseyNumber} className="flex items-center justify-between text-sm">
-                    <span className="text-white/70">#{p.jerseyNumber} {p.name}</span>
-                    <span className="font-mono text-xs font-bold" style={{ color: p.riskFlag === "red" ? "#ff3355" : "#ff6b35" }}>
-                      {p.acwr.toFixed(2)}
-                    </span>
-                  </div>
+                  <ExpandableCard
+                    key={p.jerseyNumber}
+                    title={`#${p.jerseyNumber} ${p.name}`}
+                    compact
+                    accentColor={p.riskFlag === "red" ? "#ff3355" : "#ff6b35"}
+                    badge={{
+                      text: p.riskFlag,
+                      color: p.riskFlag === "red" ? "#ff3355" : "#ff6b35",
+                    }}
+                    preview={
+                      <span className="font-mono text-xs font-bold" style={{ color: p.riskFlag === "red" ? "#ff3355" : "#ff6b35" }}>
+                        {p.acwr.toFixed(2)}
+                      </span>
+                    }
+                    actions={[
+                      { label: "Rest Player", icon: <UserMinus className="h-3 w-3" />, onClick: () => console.log(`Rest: ${p.name}`), variant: "danger", color: "#ff3355" },
+                      { label: "Reduce Load", icon: <TrendingDown className="h-3 w-3" />, onClick: () => console.log(`Reduce load: ${p.name}`), variant: "secondary", color: "#ff6b35" },
+                      { label: "View Profile", icon: <Eye className="h-3 w-3" />, onClick: () => console.log(`View: ${p.name}`), variant: "primary" },
+                    ]}
+                  >
+                    <div className="space-y-2">
+                      <div>
+                        <p className="text-[10px] text-white/40 uppercase tracking-wider mb-1">ACWR Trend</p>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all"
+                              style={{
+                                width: `${Math.min(100, (p.acwr / 2) * 100)}%`,
+                                background: p.riskFlag === "red"
+                                  ? "linear-gradient(90deg, #ff6b35, #ff3355)"
+                                  : "linear-gradient(90deg, #00ff88, #ff6b35)",
+                              }}
+                            />
+                          </div>
+                          <span className="font-mono text-xs font-bold" style={{ color: p.riskFlag === "red" ? "#ff3355" : "#ff6b35" }}>
+                            {p.acwr.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-white/50 leading-relaxed">
+                        {p.riskFlag === "red"
+                          ? `ACWR of ${p.acwr.toFixed(2)} is well above the 1.5 danger threshold. Recommend full rest or light recovery only until ratio drops below 1.3.`
+                          : `ACWR of ${p.acwr.toFixed(2)} is in the caution zone (1.25-1.5). Reduce training intensity by 20-30% and monitor closely.`
+                        }
+                      </p>
+                    </div>
+                  </ExpandableCard>
                 ))}
               </div>
             )}
@@ -253,100 +454,39 @@ export function DailyBriefing({
             )}
           </div>
 
-          {/* AI Insights — contextual coaching intelligence */}
+          {/* AI Insights -- expandable insight cards */}
           <div className="rounded-lg bg-[#a855f7]/5 border border-[#a855f7]/10 p-3">
             <div className="flex items-center gap-2 mb-2.5">
               <Sparkles className="h-4 w-4 text-[#a855f7]" />
               <span className="text-xs font-semibold text-[#a855f7]/70 uppercase tracking-wider">AI Insights</span>
             </div>
-            <div className="space-y-2.5">
-              {/* Priority 1: Injury risk */}
-              {redPlayers.length > 0 && (
-                <div className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#ff3355] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #ff3355" }} />
-                  <p className="text-xs text-white/60 leading-relaxed">
-                    <span className="text-[#ff3355] font-semibold">High injury risk:</span> {redPlayers.slice(0, 3).map(p => `${p.name} (ACWR ${p.acwr.toFixed(2)})`).join(", ")}
-                    {redPlayers.length > 3 && ` +${redPlayers.length - 3} more`}. Recommend full rest or light recovery only.
-                  </p>
-                </div>
-              )}
-
-              {/* Priority 2: Load management */}
-              {amberPlayers.length > 0 && (
-                <div className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#ff6b35] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #ff6b35" }} />
-                  <p className="text-xs text-white/60 leading-relaxed">
-                    <span className="text-[#ff6b35] font-semibold">{amberPlayers.length} players need load monitoring.</span>
-                    {" "}Reduce volume for {amberPlayers.slice(0, 2).map(p => p.name).join(" & ")}
-                    {amberPlayers.length > 2 && ` and ${amberPlayers.length - 2} others`}.
-                    {todaySession ? " Cap their session at 60 minutes." : ""}
-                  </p>
-                </div>
-              )}
-
-              {/* Priority 3: Match prep context */}
-              {daysUntilMatch !== null && daysUntilMatch <= 3 && daysUntilMatch > 0 && (
-                <div className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#a855f7] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #a855f7" }} />
-                  <p className="text-xs text-white/60 leading-relaxed">
-                    <span className="text-[#a855f7] font-semibold">Match in {daysUntilMatch}d.</span>
-                    {daysUntilMatch === 1
-                      ? " Today should be activation only — 30min walk-through, set pieces, team shape. No high intensity."
-                      : daysUntilMatch === 2
-                        ? " Keep today moderate. Focus on tactical patterns and transition drills. Avoid heavy conditioning."
-                        : " Good window for a sharp, match-intensity session. Test your starting XI shape."}
-                  </p>
-                </div>
-              )}
-
-              {/* Priority 4: Load trend analysis */}
-              {loadTrend !== null && Math.abs(loadTrend) > 10 && (
-                <div className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: loadTrend > 10 ? "#ff6b35" : "#00d4ff", boxShadow: `0 0 4px ${loadTrend > 10 ? "#ff6b35" : "#00d4ff"}` }} />
-                  <p className="text-xs text-white/60 leading-relaxed">
-                    {loadTrend > 10 ? (
-                      <><span className="text-[#ff6b35] font-semibold">Load trending up {loadTrend}%.</span> Squad is accumulating fatigue. If no match this week, schedule a recovery session. If match approaching, taper now.</>
-                    ) : (
-                      <><span className="text-[#00d4ff] font-semibold">Load down {Math.abs(loadTrend)}%.</span> Good deload phase. Squad should feel fresh. Ideal time to push tactical complexity or high-intensity reps.</>
-                    )}
-                  </p>
-                </div>
-              )}
-
-              {/* Priority 5: Session recommendation */}
-              {todaySession && (
-                <div className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#00d4ff] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #00d4ff" }} />
-                  <p className="text-xs text-white/60 leading-relaxed">
-                    <span className="text-[#00d4ff] font-semibold">Today&apos;s {todaySession.type}:</span>
-                    {teamReadiness !== null && teamReadiness < 50
-                      ? " Squad readiness is low — consider reducing planned intensity by 20-30% and shortening to 60 min."
-                      : teamReadiness !== null && teamReadiness >= 80
-                        ? " Squad is fresh and ready. Push the intensity — this is a good day for high-tempo tactical work."
-                        : ` ${todaySession.duration_minutes} min at ${todaySession.location}. Monitor HR zones closely for flagged players.`}
-                  </p>
-                </div>
-              )}
-
-              {/* All clear */}
-              {playersAtRisk.length === 0 && (!loadTrend || Math.abs(loadTrend) <= 10) && !todaySession && (
-                <div className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#00ff88] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #00ff88" }} />
-                  <p className="text-xs text-white/60 leading-relaxed">
-                    <span className="text-[#00ff88] font-semibold">All clear.</span> No load alerts, squad is healthy. Rest day — let the body recover. Good time for video review or individual skill sessions.
-                  </p>
-                </div>
-              )}
-
-              {/* Top performer shoutout */}
-              {topPerformer && (
-                <div className="flex items-start gap-2">
-                  <div className="h-1.5 w-1.5 rounded-full bg-[#ffbb00] mt-1.5 shrink-0" style={{ boxShadow: "0 0 4px #ffbb00" }} />
-                  <p className="text-xs text-white/60 leading-relaxed">
-                    <span className="text-[#ffbb00] font-semibold">Star performer:</span> #{topPerformer.jersey} {topPerformer.name} leads with TRIMP {topPerformer.trimp} this week. Consider featuring in social media content.
-                  </p>
-                </div>
-              )}
+            <div className="space-y-2">
+              {insightItems.map((item) => (
+                <ExpandableCard
+                  key={item.id}
+                  compact
+                  title=""
+                  accentColor={item.dotColor}
+                  icon={
+                    <div
+                      className="h-1.5 w-1.5 rounded-full shrink-0"
+                      style={{ backgroundColor: item.dotColor, boxShadow: `0 0 4px ${item.dotColor}` }}
+                    />
+                  }
+                  preview={item.summary}
+                  actions={item.actions}
+                >
+                  <div className="space-y-2">
+                    {/* Show the summary again at top for context */}
+                    <div>{item.summary}</div>
+                    <div className="rounded-lg bg-white/[0.03] border border-white/[0.04] p-2.5">
+                      <p className="text-[11px] text-white/50 leading-relaxed">
+                        {item.detail}
+                      </p>
+                    </div>
+                  </div>
+                </ExpandableCard>
+              ))}
             </div>
           </div>
         </div>

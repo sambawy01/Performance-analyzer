@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Brain, Loader2, Zap, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Brain, Loader2, Zap, TrendingUp, TrendingDown, Minus, Dumbbell, StickyNote } from "lucide-react";
+import { ExpandableCard } from "@/components/ui/expandable-card";
 
 interface LoadRecord {
   date: string;
@@ -290,7 +291,7 @@ export function InjuryRiskPanel({
             <RiskGauge score={score} />
           </div>
 
-          {/* Risk factors */}
+          {/* Risk factors — expandable cards */}
           <div className="space-y-3">
             <div className="grid grid-cols-1 gap-2">
               {[
@@ -299,6 +300,12 @@ export function InjuryRiskPanel({
                   value: acwrTrend,
                   detail: `Current: ${latest?.acwr_ratio ?? "N/A"}`,
                   icon: <TrendIcon trend={acwrTrend} />,
+                  explanation: acwrTrend === "rising"
+                    ? "The acute:chronic workload ratio is trending upward over the last 7 sessions, meaning recent training load is outpacing long-term adaptation. This increases injury risk if not managed."
+                    : acwrTrend === "falling"
+                      ? "ACWR is trending downward, indicating load is decreasing relative to chronic baseline. This could mean deloading or reduced participation -- both reduce injury risk but may also indicate detraining."
+                      : "ACWR is stable, suggesting training load is consistent with the player's chronic adaptation. This is the ideal scenario for injury prevention.",
+                  accentColor: acwrTrend === "rising" ? "#ff3355" : acwrTrend === "falling" ? "#00ff88" : "#00d4ff",
                 },
                 {
                   label: "Recovery Trend",
@@ -307,6 +314,12 @@ export function InjuryRiskPanel({
                     ? `Latest: ${recentMetrics[0].hr_recovery_60s} bpm`
                     : "No data",
                   icon: <TrendIcon trend={recoveryTrend} />,
+                  explanation: recoveryTrend === "declining"
+                    ? "Heart rate recovery at 60 seconds is declining, which is a key indicator of accumulated fatigue and reduced cardiovascular fitness. The body is taking longer to return to baseline after exertion."
+                    : recoveryTrend === "improving"
+                      ? "HR recovery is improving, showing enhanced cardiovascular fitness and better autonomic nervous system function. The player is adapting well to the training load."
+                      : "Recovery metrics are stable, suggesting the current training load is well-balanced for this player's fitness level.",
+                  accentColor: recoveryTrend === "declining" ? "#ff3355" : recoveryTrend === "improving" ? "#00ff88" : "#00d4ff",
                 },
                 {
                   label: "Load Consistency",
@@ -325,22 +338,39 @@ export function InjuryRiskPanel({
                     ) : (
                       <Minus className="h-3.5 w-3.5 text-[#00ff88]" />
                     ),
+                  explanation: loadConsistency === "spike"
+                    ? "A sudden load spike was detected -- one session had a dramatically higher load than the average. Load spikes are one of the strongest predictors of soft-tissue injury (Gabbett 2016). The body needs gradual, progressive overload."
+                    : loadConsistency === "gradual"
+                      ? "Load has been gradually increasing across sessions. While progressive overload is necessary for adaptation, ensure the rate of increase stays below 10% per week to maintain safety."
+                      : "Training load has been well-distributed across sessions with no spikes or dramatic changes. This is the optimal pattern for injury prevention and progressive development.",
+                  accentColor: loadConsistency === "spike" ? "#ff3355" : loadConsistency === "gradual" ? "#ff6b35" : "#00ff88",
                 },
               ].map((item) => (
-                <div
+                <ExpandableCard
                   key={item.label}
-                  className="flex items-center justify-between rounded-lg px-3 py-2"
-                  style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}
+                  compact
+                  icon={item.icon}
+                  title={item.label}
+                  subtitle={item.detail}
+                  accentColor={item.accentColor}
+                  preview={
+                    <span className="text-xs font-medium capitalize text-white/70">{item.value}</span>
+                  }
+                  actions={[
+                    { label: "Design Training for This", icon: <Dumbbell className="h-3 w-3" />, onClick: () => console.log(`Design training for: ${item.label}`), variant: "primary", color: item.accentColor },
+                    { label: "Add Coach Note", icon: <StickyNote className="h-3 w-3" />, onClick: () => console.log(`Add note for: ${item.label}`), variant: "secondary" },
+                  ]}
                 >
-                  <div className="flex items-center gap-2">
-                    {item.icon}
-                    <div>
-                      <p className="text-xs text-white/50">{item.label}</p>
-                      <p className="text-xs text-white/30">{item.detail}</p>
+                  <div className="space-y-2">
+                    <p className="text-[11px] text-white/50 leading-relaxed">{item.explanation}</p>
+                    <div className="rounded-lg bg-white/[0.03] border border-white/[0.04] p-2">
+                      <p className="text-[10px] text-white/40">
+                        <span className="uppercase tracking-wider font-semibold">Historical comparison: </span>
+                        This metric has been tracked across {loadHistory.length} sessions for {playerName}.
+                      </p>
                     </div>
                   </div>
-                  <span className="text-xs font-medium capitalize text-white/70">{item.value}</span>
-                </div>
+                </ExpandableCard>
               ))}
             </div>
 

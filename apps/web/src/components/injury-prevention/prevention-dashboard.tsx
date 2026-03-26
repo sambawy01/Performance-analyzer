@@ -30,8 +30,12 @@ import {
   ArrowDownRight,
   Minus,
   Info,
+  UserMinus,
+  Dumbbell,
+  ListPlus,
 } from "lucide-react";
 import { ExportShareBar } from "@/components/ui/export-share-bar";
+import { ExpandableCard } from "@/components/ui/expandable-card";
 import type { ContributingFactor, RecoveryFactor } from "@/lib/injury/risk-engine";
 
 // Dynamic import Recharts components (SSR: false)
@@ -333,13 +337,20 @@ function MonotonyPanel({ players, weeklyLoad }: { players: PlayerRiskData[]; wee
         </div>
       </div>
 
-      {/* Warning banner */}
+      {/* Warning banner — expandable */}
       {(isMonotonyHigh || isStrainHigh) && (
-        <div className="rounded-lg bg-[#f59e0b]/8 border border-[#f59e0b]/20 p-3 flex items-start gap-2">
-          <AlertTriangle className="h-4 w-4 text-[#f59e0b] shrink-0 mt-0.5" />
-          <div>
-            <p className="text-xs text-[#f59e0b] font-semibold">Vary Your Training More</p>
-            <p className="text-[11px] text-white/50 mt-0.5">
+        <ExpandableCard
+          compact
+          icon={<AlertTriangle className="h-4 w-4 text-[#f59e0b]" />}
+          title="Vary Your Training More"
+          accentColor="#f59e0b"
+          badge={{ text: "warning", color: "#f59e0b" }}
+          actions={[
+            { label: "Design Varied Session", icon: <Dumbbell className="h-3 w-3" />, onClick: () => console.log("Design varied session"), variant: "primary", color: "#f59e0b" },
+          ]}
+        >
+          <div className="space-y-2">
+            <p className="text-[11px] text-white/50 leading-relaxed">
               {isMonotonyHigh
                 ? `Squad monotony index (${squadAvgMonotony.toFixed(1)}) exceeds the 2.0 threshold. `
                 : ""}
@@ -348,11 +359,21 @@ function MonotonyPanel({ players, weeklyLoad }: { players: PlayerRiskData[]; wee
                 : ""}
               Alternate between high, medium, and low intensity days. Include varied session types (technical, tactical, fitness, recovery).
             </p>
+            <div className="rounded-lg bg-white/[0.03] border border-white/[0.04] p-2.5">
+              <p className="text-[10px] text-white/40 uppercase tracking-wider font-semibold mb-1">Suggested Drill Variations</p>
+              <ul className="space-y-1 text-[11px] text-white/50">
+                <li>-- Replace repetitive possession drills with varied small-sided games (3v3, 4v4, 5v5)</li>
+                <li>-- Alternate between technical/tactical days and conditioning days</li>
+                <li>-- Include at least one recovery session (pool, yoga, mobility) per week</li>
+                <li>-- Vary session duration: mix 45min, 60min, and 90min sessions</li>
+                <li>-- Add cognitive load variation: new drills, opposition scenarios, game conditions</li>
+              </ul>
+            </div>
           </div>
-        </div>
+        </ExpandableCard>
       )}
 
-      {/* Players with high monotony */}
+      {/* Players with high monotony — expandable */}
       {highMonotonyPlayers.length > 0 && (
         <div>
           <h5 className="text-[10px] text-white/30 uppercase tracking-wider mb-2">
@@ -360,17 +381,40 @@ function MonotonyPanel({ players, weeklyLoad }: { players: PlayerRiskData[]; wee
           </h5>
           <div className="space-y-1.5">
             {highMonotonyPlayers.slice(0, 6).map((p) => (
-              <div
+              <ExpandableCard
                 key={p.id}
-                className="flex items-center gap-3 px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06]"
+                compact
+                title={`#${p.jerseyNumber} ${p.name}`}
+                accentColor="#ff3355"
+                preview={
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-[#ff3355]">{p.monotony.toFixed(2)}</span>
+                    <span className="text-[9px] text-white/30">monotony</span>
+                  </div>
+                }
+                actions={[
+                  { label: "Create Varied Plan", icon: <Dumbbell className="h-3 w-3" />, onClick: () => console.log(`Varied plan for: ${p.name}`), variant: "primary", color: "#22d3ee" },
+                  { label: "View Profile", icon: <Eye className="h-3 w-3" />, href: `/players/${p.id}`, variant: "secondary" },
+                ]}
               >
-                <span className="font-mono text-xs font-bold text-[#ff3355]">#{p.jerseyNumber}</span>
-                <span className="text-xs text-white/70 flex-1">{p.name}</span>
-                <span className="font-mono text-xs text-[#ff3355]">{p.monotony.toFixed(2)}</span>
-                <span className="text-[9px] text-white/30">monotony</span>
-                <span className="font-mono text-xs text-[#f59e0b]">{p.strain.toLocaleString()}</span>
-                <span className="text-[9px] text-white/30">strain</span>
-              </div>
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg px-2 py-1.5 bg-white/[0.03] border border-white/[0.05] text-center">
+                      <p className="text-[9px] text-white/30 uppercase">Monotony</p>
+                      <p className="text-sm font-mono font-bold text-[#ff3355]">{p.monotony.toFixed(2)}</p>
+                    </div>
+                    <div className="rounded-lg px-2 py-1.5 bg-white/[0.03] border border-white/[0.05] text-center">
+                      <p className="text-[9px] text-white/30 uppercase">Strain</p>
+                      <p className="text-sm font-mono font-bold text-[#f59e0b]">{p.strain.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-white/50 leading-relaxed">
+                    This player&apos;s training load has been too consistent (monotony {p.monotony.toFixed(1)} &gt; 2.0 threshold).
+                    Identical daily loads suppress adaptation and increase illness/injury risk.
+                    Vary their training intensity across the week: include at least one high day, one low day, and rest days.
+                  </p>
+                </div>
+              </ExpandableCard>
             ))}
           </div>
         </div>
@@ -412,7 +456,7 @@ function CumulativeLoadTracker({ players }: { players: PlayerRiskData[] }) {
   const displayPlayers = atRiskPlayers.length > 0 ? atRiskPlayers : allPlayers;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {displayPlayers.map((p) => {
         const pct = Math.min(100, (p.cumulativeLoad14d / p.cumulativeThreshold) * 100);
         const isOver = pct >= 100;
@@ -422,41 +466,66 @@ function CumulativeLoadTracker({ players }: { players: PlayerRiskData[] }) {
           : isClose
           ? "linear-gradient(90deg, #00ff88, #f59e0b)"
           : "linear-gradient(90deg, #00ff88, #22d3ee)";
+        const accentColor = isOver ? "#ff3355" : isClose ? "#f59e0b" : "#00ff88";
 
         return (
-          <div key={p.id} className="flex items-center gap-3">
-            <div className="w-24 flex items-center gap-2 shrink-0">
-              <span
-                className="font-mono text-xs font-bold"
-                style={{ color: isOver ? "#ff3355" : isClose ? "#f59e0b" : "#00ff88" }}
-              >
-                #{p.jerseyNumber}
-              </span>
-              <span className="text-[10px] text-white/50 truncate">{p.name.split(" ").pop()}</span>
+          <ExpandableCard
+            key={p.id}
+            compact
+            title={`#${p.jerseyNumber} ${p.name}`}
+            accentColor={accentColor}
+            badge={isOver ? { text: "OVER", color: "#ff3355" } : isClose ? { text: "CLOSE", color: "#f59e0b" } : undefined}
+            preview={
+              <div className="flex items-center gap-2">
+                <div className="w-20 h-2 bg-white/[0.06] rounded-full overflow-hidden relative hidden sm:block">
+                  <div
+                    className="h-full rounded-full"
+                    style={{ width: `${Math.min(100, pct)}%`, background: barColor }}
+                  />
+                </div>
+                <span className="font-mono text-xs font-bold" style={{ color: accentColor }}>
+                  {p.cumulativeLoad14d.toLocaleString()}
+                </span>
+              </div>
+            }
+            actions={[
+              ...(isOver || isClose ? [
+                { label: "Reduce Load Plan", icon: <TrendingDown className="h-3 w-3" />, onClick: () => console.log(`Reduce load: ${p.name}`), variant: "primary" as const, color: accentColor },
+                { label: "Rest Player", icon: <UserMinus className="h-3 w-3" />, onClick: () => console.log(`Rest: ${p.name}`), variant: "danger" as const },
+              ] : []),
+              { label: "View Profile", icon: <Eye className="h-3 w-3" />, href: `/players/${p.id}`, variant: "secondary" as const },
+            ]}
+          >
+            <div className="space-y-2">
+              {/* Full progress bar */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-white/40">14-Day Cumulative Load</span>
+                  <span className="text-[10px] font-mono text-white/40">{Math.round(pct)}%</span>
+                </div>
+                <div className="h-3 bg-white/[0.06] rounded-full overflow-hidden relative">
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(100, pct)}%`, background: barColor }}
+                  />
+                  <div className="absolute top-0 h-full w-px bg-[#f59e0b]/40" style={{ left: "80%" }} />
+                </div>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[9px] text-white/20">0</span>
+                  <span className="text-[9px] text-[#f59e0b]/40">80% threshold</span>
+                  <span className="text-[9px] text-white/20">{p.cumulativeThreshold.toLocaleString()}</span>
+                </div>
+              </div>
+              <p className="text-[11px] text-white/50 leading-relaxed">
+                {isOver
+                  ? `Load of ${p.cumulativeLoad14d.toLocaleString()} AU exceeds the ${p.cumulativeThreshold.toLocaleString()} AU threshold. Recommend immediate load reduction: cap daily TRIMP at 50% of average for the next 3-5 days, prioritize recovery modalities, and avoid high-intensity drills.`
+                  : isClose
+                    ? `Approaching threshold at ${Math.round(pct)}%. Reduce training volume over the next 2-3 sessions to prevent overload. Lower session intensity by 20% and ensure at least one full rest day this week.`
+                    : `Load is within safe limits at ${Math.round(pct)}% of threshold. Continue normal training but monitor for any sudden increases.`
+                }
+              </p>
             </div>
-            <div className="flex-1 h-2 bg-white/[0.06] rounded-full overflow-hidden relative">
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, pct)}%`, background: barColor }}
-              />
-              {/* Threshold marker at 80% */}
-              <div
-                className="absolute top-0 h-full w-px bg-[#f59e0b]/40"
-                style={{ left: "80%" }}
-              />
-            </div>
-            <div className="w-28 text-right shrink-0">
-              <span
-                className="font-mono text-xs font-bold"
-                style={{ color: isOver ? "#ff3355" : isClose ? "#f59e0b" : "#00ff88" }}
-              >
-                {p.cumulativeLoad14d.toLocaleString()}
-              </span>
-              <span className="text-[9px] text-white/20">
-                /{p.cumulativeThreshold.toLocaleString()}
-              </span>
-            </div>
-          </div>
+          </ExpandableCard>
         );
       })}
 
@@ -824,6 +893,58 @@ function PlayerRiskDetail({
             <p className="text-[11px] text-white/50 leading-relaxed">
               {player.overallRecommendation}
             </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => console.log(`Create modified session for: ${player.name}`)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: "rgba(0,212,255,0.08)",
+                border: "1px solid rgba(0,212,255,0.20)",
+                color: "#00d4ff",
+              }}
+            >
+              <Dumbbell className="h-3 w-3" />
+              Create Modified Session
+            </button>
+            <button
+              onClick={() => console.log(`Rest player: ${player.name}`)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: "rgba(255,51,85,0.08)",
+                border: "1px solid rgba(255,51,85,0.20)",
+                color: "#ff3355",
+              }}
+            >
+              <UserMinus className="h-3 w-3" />
+              Rest Player
+            </button>
+            <a
+              href={`/players/${player.id}`}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.10)",
+                color: "rgba(255,255,255,0.7)",
+              }}
+            >
+              <Eye className="h-3 w-3" />
+              View Full Profile
+            </a>
+            <button
+              onClick={() => console.log(`Add to watch list: ${player.name}`)}
+              className="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+              style={{
+                background: "rgba(245,158,11,0.08)",
+                border: "1px solid rgba(245,158,11,0.20)",
+                color: "#f59e0b",
+              }}
+            >
+              <ListPlus className="h-3 w-3" />
+              Add to Watch List
+            </button>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
